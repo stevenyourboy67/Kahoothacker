@@ -1,0 +1,21 @@
+{
+  "name": "kahootinator-3",
+  "version": "3.0.0",
+  "description": "Kahootinator 3.0 — Kahoot Hacking Suite",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "furkota",
+  "license": "unlicense",
+  "dependencies": {
+    "an-array-of-english-words": "^2.0.0",
+    "beepbeep": "^1.3.0",
+    "console-title": "^1.1.0",
+    "express": "^5.2.1",
+    "kahoot.js-latest": "^1.0.8",
+    "random-name": "^0.1.2",
+    "readline-sync": "^1.4.10",
+    "request": "^2.81.0"
+  }
+}

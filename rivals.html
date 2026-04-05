@@ -1,0 +1,2426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Roblox-Rivals — GameCenter</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #000; overflow: hidden; font-family: 'Inter', sans-serif; }
+  #c { display: block; width: 100vw; height: 100vh; }
+
+  /* ── HUD ── */
+  #hud {
+    position: fixed; inset: 0; pointer-events: none;
+    display: flex; flex-direction: column;
+  }
+
+  /* Top bar */
+  #topbar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 20px; pointer-events: auto;
+  }
+  #back-btn {
+    background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.15);
+    color: #fff; font-size: 0.82rem; font-weight: 600; padding: 6px 14px;
+    border-radius: 8px; cursor: pointer; text-decoration: none;
+    backdrop-filter: blur(8px);
+    transition: background 0.2s;
+  }
+  #back-btn:hover { background: rgba(255,255,255,0.12); }
+
+  #match-info {
+    background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px; padding: 6px 18px; text-align: center;
+    backdrop-filter: blur(8px);
+  }
+  #match-info .mode { font-size: 0.7rem; color: #94a3b8; letter-spacing: 1px; text-transform: uppercase; }
+  #match-info .score { font-size: 1.1rem; font-weight: 700; color: #fff; }
+
+  /* Crosshair */
+  #crosshair {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 22px; height: 22px;
+  }
+  #crosshair::before, #crosshair::after {
+    content: ''; position: absolute; background: rgba(255,255,255,0.9);
+    border-radius: 2px;
+  }
+  #crosshair::before { width: 2px; height: 100%; left: 50%; transform: translateX(-50%); }
+  #crosshair::after  { width: 100%; height: 2px; top: 50%; transform: translateY(-50%); }
+
+  /* Bottom HUD */
+  #bottom-hud {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    display: flex; justify-content: space-between; align-items: flex-end;
+    padding: 0 20px 18px;
+  }
+
+  .hud-panel {
+    background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px; padding: 10px 16px; backdrop-filter: blur(8px);
+    min-width: 120px;
+  }
+  .hud-label { font-size: 0.65rem; color: #64748b; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+  .hud-value { font-size: 1.1rem; font-weight: 700; color: #fff; }
+
+  #health-bar-wrap { width: 80px; margin-top: 5px; }
+  #health-bar-bg { background: rgba(255,255,255,0.1); border-radius: 4px; height: 5px; }
+  #health-bar { background: #4ade80; height: 5px; border-radius: 4px; width: 100%; transition: width 0.2s, background 0.3s; }
+
+  .hud-weapon { text-align: right; }
+  .hud-ammo { font-size: 0.8rem; color: #94a3b8; margin-top: 2px; }
+
+  /* Weapon slots */
+  #weapon-slots {
+    position: fixed; bottom: 18px; right: 20px;
+    display: flex; gap: 5px; align-items: flex-end;
+  }
+  .w-slot {
+    width: 42px; height: 42px;
+    background: rgba(0,0,0,0.55);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 6px;
+    backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .w-slot.active {
+    border-color: rgba(99,102,241,0.7);
+    background: rgba(99,102,241,0.15);
+  }
+  .w-slot svg { width: 28px; height: 28px; }
+  .w-slot-num {
+    position: absolute; bottom: 2px; right: 4px;
+    font-size: 0.6rem; font-weight: 700; color: rgba(255,255,255,0.4);
+    line-height: 1; pointer-events: none;
+  }
+  .w-slot { position: relative; }
+
+  #weapon-info {
+    position: fixed; bottom: 78px; right: 20px;
+    background: rgba(0,0,0,0.55);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px; padding: 10px 16px;
+    backdrop-filter: blur(8px);
+    text-align: right;
+  }
+
+  /* Kill feed */
+  #killfeed {
+    position: fixed; top: 80px; right: 16px;
+    display: flex; flex-direction: column; gap: 5px;
+  }
+  .kf-entry {
+    background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px; padding: 5px 12px; font-size: 0.78rem; color: #fff;
+    backdrop-filter: blur(6px); animation: kfIn 0.2s ease;
+    opacity: 1; transition: opacity 0.5s;
+  }
+  @keyframes kfIn { from { opacity: 0; transform: translateX(20px); } }
+  .kf-you { color: #4ade80; font-weight: 700; }
+  .kf-enemy { color: #f87171; }
+
+  /* Lock prompt */
+  #lock-prompt {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 16px; backdrop-filter: blur(4px);
+  }
+  #lock-prompt h1 { font-size: 2.2rem; font-weight: 800; color: #fff; letter-spacing: -0.5px; }
+  #lock-prompt p  { color: #94a3b8; font-size: 0.95rem; }
+  #lock-prompt .controls-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px;
+    margin-top: 8px; font-size: 0.85rem; color: #cbd5e1;
+  }
+  #lock-prompt .key { background: rgba(255,255,255,0.1); border-radius: 6px; padding: 2px 8px; font-weight: 700; color: #fff; }
+  #lock-btn {
+    margin-top: 8px; padding: 12px 36px; border-radius: 12px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff; font-size: 1rem; font-weight: 700; border: none;
+    cursor: pointer; box-shadow: 0 4px 24px rgba(99,102,241,0.4);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  #lock-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(99,102,241,0.5); }
+
+  /* Hit marker */
+  #hit-marker {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 20px; height: 20px; opacity: 0; pointer-events: none;
+    transition: opacity 0.08s;
+  }
+  #hit-marker::before, #hit-marker::after {
+    content: ''; position: absolute; background: #f87171; border-radius: 2px;
+  }
+  #hit-marker::before { width: 2px; height: 100%; left: 50%; transform: translateX(-50%); }
+  #hit-marker::after  { width: 100%; height: 2px; top: 50%; transform: translateY(-50%); }
+  #hit-marker.show { opacity: 1; }
+
+  /* Damage vignette */
+  #vignette {
+    position: fixed; inset: 0; pointer-events: none;
+    box-shadow: inset 0 0 80px rgba(239,68,68,0);
+    transition: box-shadow 0.1s;
+  }
+  #vignette.hit { box-shadow: inset 0 0 80px rgba(239,68,68,0.6); }
+
+  /* ADS scope overlay */
+  #scope-overlay {
+    position: fixed; inset: 0; pointer-events: none;
+    z-index: 50; opacity: 0;
+    transition: opacity 0.12s ease;
+  }
+  #scope-overlay.active { opacity: 1; }
+  /* Circular lens edge only — outer area transparent */
+  #scope-overlay::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(circle 185px at 50% 50%,
+      transparent 178px,
+      rgba(0,0,0,0.55) 183px,
+      transparent 188px);
+  }
+  /* Outer scope ring */
+  #scope-overlay::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 372px; height: 372px;
+    border-radius: 50%;
+    border: 3px solid rgba(80,80,80,0.9);
+    box-shadow: 0 0 0 2px rgba(0,0,0,0.8), inset 0 0 12px rgba(0,0,0,0.5);
+  }
+  /* Scope reticle */
+  #scope-reticle {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 370px; height: 370px;
+    pointer-events: none;
+  }
+  #scope-reticle::before,
+  #scope-reticle::after {
+    content: '';
+    position: absolute;
+    background: rgba(220,30,30,0.92);
+    border-radius: 2px;
+  }
+  /* Horizontal line */
+  #scope-reticle::before {
+    width: 340px; height: 1.5px;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+  }
+  /* Vertical line */
+  #scope-reticle::after {
+    width: 1.5px; height: 340px;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+  }
+  /* Center dot */
+  #scope-dot {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: rgba(220,30,30,0.95);
+    pointer-events: none;
+  }
+  /* Hide regular crosshair when scoped */
+  body.ads #crosshair { display: none; }
+
+  /* Reload indicator */
+  #reload-indicator {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 14px;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    pointer-events: none;
+  }
+  #reload-indicator.visible { display: flex; }
+  #reload-clock {
+    font-size: 0.6rem;
+    line-height: 1;
+    opacity: 0.85;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8));
+  }
+  #reload-bar-bg {
+    width: 32px;
+    height: 2px;
+    background: rgba(255,255,255,0.18);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  #reload-bar-fill {
+    height: 100%;
+    width: 100%;
+    background: rgba(255,255,255,0.85);
+    border-radius: 2px;
+    transform-origin: left center;
+    transition: transform 0.05s linear;
+  }
+
+  /* Floating damage numbers */
+  .dmg-number {
+    position: fixed;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #fbbf24;
+    pointer-events: none;
+    z-index: 200;
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.7);
+    transform: translate(-50%, -50%);
+    letter-spacing: 0.5px;
+  }
+  .dmg-number.headshot { color: #f87171; font-size: 1.15rem; }
+  .dmg-number.pop { animation: dmgPop 0.12s ease-out; }
+  .dmg-number.hiding { animation: dmgHide 0.55s ease-out forwards; }
+  @keyframes dmgPop {
+    0%   { transform: translate(-50%, -50%) scale(1); }
+    50%  { transform: translate(-50%, -50%) scale(1.4); }
+    100% { transform: translate(-50%, -50%) scale(1); }
+  }
+  @keyframes dmgHide {
+    0%   { opacity: 1; transform: translate(-50%, -50%); }
+    100% { opacity: 0; transform: translate(-50%, -220%); }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+
+<!-- Crosshair -->
+<div id="crosshair"></div>
+<div id="hit-marker"></div>
+<div id="vignette"></div>
+
+<!-- Reload indicator -->
+<div id="reload-indicator">
+  <div id="reload-clock">🕐</div>
+  <div id="reload-bar-bg">
+    <div id="reload-bar-fill"></div>
+  </div>
+</div>
+
+<!-- ADS Scope -->
+<div id="scope-overlay">
+  <div id="scope-reticle"></div>
+  <div id="scope-dot"></div>
+</div>
+
+<!-- Kill feed -->
+<div id="killfeed"></div>
+
+<!-- Top bar -->
+<div id="topbar">
+  <a id="back-btn" href="/dashboard.html">← GameCenter</a>
+  <div id="match-info">
+    <div class="mode">Deathmatch</div>
+    <div class="score" id="score-display">0 — 0</div>
+  </div>
+  <div style="width:80px"></div>
+</div>
+
+<!-- Weapon info (above slots) -->
+<div id="weapon-info">
+  <div class="hud-label">Weapon</div>
+  <div class="hud-value" id="weapon-name">Rifle</div>
+  <div class="hud-ammo" id="ammo-display">30 / 90</div>
+</div>
+
+<!-- Weapon slots -->
+<div id="weapon-slots">
+  <div class="w-slot active">
+    <svg viewBox="0 0 36 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Barrel TOP -->
+      <polygon points="1,13 13,7 15,8 3,14" fill="#d4b46c"/>
+      <!-- Barrel SIDE -->
+      <polygon points="3,14 15,8 15,11 3,17" fill="#8a6820"/>
+      <!-- Barrel TIP -->
+      <polygon points="1,13 3,14 3,17 1,16" fill="#6a5015"/>
+      <!-- Handguard TOP -->
+      <polygon points="13,7 17,5 19,7 15,9" fill="#c4a450"/>
+      <!-- Handguard SIDE -->
+      <polygon points="15,9 19,7 19,11 15,13" fill="#8a6820"/>
+      <!-- Receiver TOP -->
+      <polygon points="17,4 27,0 29,2 19,6" fill="#d4b46c"/>
+      <!-- Receiver SIDE -->
+      <polygon points="19,6 29,2 29,11 19,15" fill="#8a6820"/>
+      <!-- Receiver RIGHT -->
+      <polygon points="27,0 29,2 29,11 27,9" fill="#b08830"/>
+      <!-- Stock TOP -->
+      <polygon points="27,0 34,4 34,6 27,2" fill="#c4a450"/>
+      <!-- Stock SIDE -->
+      <polygon points="27,2 34,6 34,10 27,6" fill="#8a6820"/>
+      <!-- Grip FRONT -->
+      <polygon points="22,12 26,11 26,19 22,20" fill="#2a2a2a"/>
+      <!-- Grip RIGHT -->
+      <polygon points="26,11 28,10 28,18 26,19" fill="#1a1a1a"/>
+      <!-- Mag FRONT -->
+      <polygon points="17,13 22,12 22,20 17,21" fill="#b09040"/>
+      <!-- Mag RIGHT -->
+      <polygon points="22,12 24,11 24,19 22,20" fill="#7a6020"/>
+    </svg>
+    <span class="w-slot-num">1</span>
+  </div>
+  <div class="w-slot">
+    <svg viewBox="0 0 28 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Barrel tip TOP -->
+      <polygon points="1,11 4,9 5,10 2,12" fill="#888"/>
+      <!-- Barrel tip SIDE -->
+      <polygon points="2,12 5,10 5,13 2,15" fill="#555"/>
+      <!-- Slide TOP -->
+      <polygon points="4,8 16,3 18,5 6,10" fill="#707070"/>
+      <!-- Slide SIDE -->
+      <polygon points="6,10 18,5 18,11 6,16" fill="#333"/>
+      <!-- Slide RIGHT -->
+      <polygon points="16,3 18,5 18,11 16,9" fill="#555"/>
+      <!-- Ejection port (darker cutout on slide side) -->
+      <polygon points="9,11 14,8 14,10 9,13" fill="#222"/>
+      <!-- Frame TOP -->
+      <polygon points="11,9 18,6 19,8 12,11" fill="#505050"/>
+      <!-- Frame SIDE -->
+      <polygon points="12,11 19,8 19,13 12,16" fill="#252525"/>
+      <!-- Grip FRONT -->
+      <polygon points="14,15 17,14 17,22 14,23" fill="#222"/>
+      <!-- Grip RIGHT -->
+      <polygon points="17,14 19,13 19,21 17,22" fill="#111"/>
+      <!-- Mag base -->
+      <polygon points="14,22 17,21 18,22 15,23" fill="#333"/>
+    </svg>
+    <span class="w-slot-num">2</span>
+  </div>
+  <div class="w-slot">
+    <svg viewBox="0 0 36 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Top of fist -->
+      <polygon points="3,10 15,5 18,7 6,12" fill="#D4956A"/>
+      <!-- Front knuckle face -->
+      <polygon points="6,12 18,7 18,19 6,23" fill="#C07850"/>
+      <!-- Right side face -->
+      <polygon points="18,7 21,9 21,21 18,19" fill="#8A5532"/>
+      <!-- Thumb nub top -->
+      <polygon points="3,10 6,12 6,16 3,14" fill="#D4956A"/>
+      <!-- Thumb nub side -->
+      <polygon points="3,14 6,16 6,17 3,15" fill="#A06040"/>
+      <!-- Knuckle line 1 -->
+      <polygon points="7,14 18,10 18,11 7,15" fill="#8A5532"/>
+      <!-- Knuckle line 2 -->
+      <polygon points="7,17 18,13 18,14 7,18" fill="#8A5532"/>
+    </svg>
+    <span class="w-slot-num">3</span>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+    <div id="grenade-cd-bg" style="width:42px;height:5px;background:rgba(255,255,255,0.12);border-radius:3px;overflow:hidden;display:none;">
+      <div id="grenade-cd-fill" style="height:100%;width:100%;background:#f87171;border-radius:3px;transition:width 0.15s linear;"></div>
+    </div>
+    <div class="w-slot">
+      <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Body -->
+        <ellipse cx="14" cy="18" rx="7.5" ry="7" fill="#4a7a4a"/>
+        <!-- Body shading -->
+        <ellipse cx="14" cy="18" rx="7.5" ry="7" fill="none" stroke="#2a4a2a" stroke-width="0.6"/>
+        <!-- Horizontal segment line -->
+        <line x1="6.5" y1="18" x2="21.5" y2="18" stroke="#2a4a2a" stroke-width="0.8"/>
+        <!-- Vertical segment line -->
+        <line x1="14" y1="11" x2="14" y2="25" stroke="#2a4a2a" stroke-width="0.8"/>
+        <!-- Cap -->
+        <rect x="11" y="7" width="6" height="5" rx="1.5" fill="#666"/>
+        <!-- Lever -->
+        <rect x="17" y="5.5" width="2" height="6" rx="0.6" fill="#aaa"/>
+        <!-- Pin ring -->
+        <circle cx="10.5" cy="6" r="2" fill="none" stroke="#ccc" stroke-width="1.2"/>
+      </svg>
+      <span class="w-slot-num">4</span>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom HUD -->
+<div id="bottom-hud">
+  <div class="hud-panel">
+    <div class="hud-label">Health</div>
+    <div class="hud-value" id="hp-val">100</div>
+    <div id="health-bar-wrap">
+      <div id="health-bar-bg"><div id="health-bar"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Lock prompt (hidden by default, shown on pause) -->
+<div id="lock-prompt" style="display:none">
+  <h1>⚔️Roblox-Rivals</h1>
+  <p>First-person arena shooter</p>
+  <div class="controls-grid">
+    <div><span class="key">W A S D</span> Move</div>
+    <div><span class="key">Mouse</span> Look</div>
+    <div><span class="key">Space</span> Jump</div>
+    <div><span class="key">Click</span> Shoot</div>
+    <div><span class="key">Shift</span> Sprint</div>
+    <div><span class="key">Ctrl</span> / <span class="key">Alt</span> Slide</div>
+    <div><span class="key">E</span> / <span class="key">right click</span> Scope / ADS</div>
+    <div><span class="key">1 / 2 / 3 / 4</span> Switch Weapon</div>
+    <div><span class="key">R</span> Reload</div>
+    <div><span class="key">Esc</span> Pause</div>
+  </div>
+  <!-- Sensitivity slider -->
+  <div style="width:280px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:14px 18px; margin-top:4px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <span style="font-size:0.8rem; color:#94a3b8; letter-spacing:0.5px; text-transform:uppercase; font-weight:600;">🖱 Mouse Sensitivity</span>
+      <span id="sens-val" style="font-size:0.9rem; font-weight:700; color:#fff;">2.0</span>
+    </div>
+    <input id="sens-slider" type="range" min="0" max="4.0" step="0.1" value="2.0"
+      style="width:100%; accent-color:#6366f1; cursor:pointer;">
+    <div style="display:flex; justify-content:space-between; margin-top:4px; font-size:0.7rem; color:#475569;">
+      <span>Low</span><span>High</span>
+    </div>
+  </div>
+
+  <button id="lock-btn">Click to Play</button>
+  <a href="/dashboard.html" style="color:#64748b; font-size:0.85rem; text-decoration:none; margin-top:4px; transition:color 0.2s;"
+     onmouseover="this.style.color='#94a3b8'" onmouseout="this.style.color='#64748b'">
+    ← Back to GameCenter
+  </a>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+
+// ── Renderer ────────────────────────────────────────────
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+renderer.fog = new THREE.Fog(0x0a0a14, 45, 180);
+
+// ── Scene ────────────────────────────────────────────────
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0a14);
+scene.fog = renderer.fog;
+
+// ── Camera ───────────────────────────────────────────────
+const camera = new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 0.1, 300);
+camera.position.set(0, 1.65, 67.5);  // spawn at south end, facing into the arena
+
+// ── Pointer lock controls ────────────────────────────────
+const controls = new PointerLockControls(camera, document.body);
+
+// Load saved sensitivity (default 2.0)
+const savedSens = parseFloat(localStorage.getItem('roblox-rivals_sens') || '2.0');
+controls.pointerSpeed = savedSens;
+
+// Wire up slider
+const sensSlider = document.getElementById('sens-slider');
+const sensVal    = document.getElementById('sens-val');
+sensSlider.value = savedSens;
+sensVal.textContent = savedSens.toFixed(1);
+
+sensSlider.addEventListener('input', () => {
+  const v = parseFloat(sensSlider.value);
+  controls.pointerSpeed = v;
+  sensVal.textContent = v.toFixed(1);
+  localStorage.setItem('rivals_sens', v);
+});
+
+const lockPrompt = document.getElementById('lock-prompt');
+const lockBtn    = document.getElementById('lock-btn');
+
+lockBtn.addEventListener('click', () => controls.lock());
+controls.addEventListener('lock',   () => { lockPrompt.style.display = 'none'; });
+controls.addEventListener('unlock', () => { lockPrompt.style.display = 'flex'; });
+
+// Auto-lock on any click when not already locked
+document.addEventListener('click', () => {
+  if (!controls.isLocked) controls.lock();
+});
+
+// ── Lights ───────────────────────────────────────────────
+const ambient = new THREE.AmbientLight(0x334466, 1.2);
+scene.add(ambient);
+
+const sun = new THREE.DirectionalLight(0xffffff, 2.0);
+sun.position.set(30, 60, 30);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.near = 0.5;
+sun.shadow.camera.far  = 225;
+sun.shadow.camera.left = sun.shadow.camera.bottom = -90;
+sun.shadow.camera.right = sun.shadow.camera.top   =  90;
+sun.shadow.bias = -0.001;
+scene.add(sun);
+
+// Some colored point lights for atmosphere
+const addLight = (color, x, y, z, intensity=3, dist=18) => {
+  const l = new THREE.PointLight(color, intensity, dist);
+  l.position.set(x, y, z); scene.add(l);
+};
+addLight(0x6366f1, -30, 6, -30, 4, 33);
+addLight(0xf87171,  30, 6,  30, 4, 33);
+addLight(0x4ade80,   0, 6,  45, 3, 30);
+
+// ── Materials ────────────────────────────────────────────
+const matFloor = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.9, metalness: 0.1 });
+const matWall  = new THREE.MeshStandardMaterial({ color: 0x16213e, roughness: 0.8, metalness: 0.2 });
+const matAccent= new THREE.MeshStandardMaterial({ color: 0x6366f1, roughness: 0.5, metalness: 0.6, emissive: 0x2a2bb5, emissiveIntensity: 0.3 });
+const matCrate = new THREE.MeshStandardMaterial({ color: 0x2d3748, roughness: 0.7, metalness: 0.3 });
+const matRamp  = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8, metalness: 0.1 });
+
+// ── Arena builder ─────────────────────────────────────────
+const colliders = []; // {min, max} AABB boxes
+
+function box(w, h, d, mat, x, y, z, castShadow=true) {
+  const geo  = new THREE.BoxGeometry(w, h, d);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(x, y, z);
+  mesh.castShadow = castShadow;
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+  colliders.push({
+    min: new THREE.Vector3(x - w/2, y - h/2, z - d/2),
+    max: new THREE.Vector3(x + w/2, y + h/2, z + d/2),
+  });
+  return mesh;
+}
+
+// Floor
+const floorGeo = new THREE.PlaneGeometry(180, 180, 40, 40);
+const floor = new THREE.Mesh(floorGeo, matFloor);
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// Outer walls
+box(180, 12, 1.5, matWall,   0, 6, -90);   // north
+box(180, 12, 1.5, matWall,   0, 6,  90);   // south
+box(1.5, 12, 180, matWall, -90, 6, 0);   // west
+box(1.5, 12, 180, matWall,  90, 6, 0);   // east
+
+// Center structure
+box(12, 6, 12, matAccent, 0, 3, 0);
+box(15, 0.6, 15, matAccent, 0, 6.3, 0);  // roof
+
+// Inner cover walls (cross shape)
+box(30, 4.5, 2.25, matWall,  0, 2.25,  18);
+box(30, 4.5, 2.25, matWall,  0, 2.25, -18);
+box(2.25, 4.5, 30, matWall,  18, 2.25, 0);
+box(2.25, 4.5, 30, matWall, -18, 2.25, 0);
+
+// Crates scattered around
+const cratePositions = [
+  [12, 1.125, 12], [-12, 1.125, 12], [12, 1.125, -12], [-12, 1.125, -12],
+  [30, 1.125, 30], [-30, 1.125, 30], [30, 1.125, -30], [-30, 1.125, -30],
+  [0, 1.125, 37.5], [0, 1.125, -37.5], [37.5, 1.125, 0], [-37.5, 1.125, 0],
+];
+cratePositions.forEach(([x,y,z]) => box(2.25, 2.25, 2.25, matCrate, x, y, z));
+
+// Stacked crates
+box(2.25, 2.25, 2.25, matCrate, 12, 3.375, 12);
+box(2.25, 2.25, 2.25, matCrate, -30, 3.375, 30);
+
+// Ramps
+const rampGeo = new THREE.BoxGeometry(9, 0.45, 15);
+const makeRamp = (x, y, z, ry) => {
+  const m = new THREE.Mesh(rampGeo, matRamp);
+  m.position.set(x, y, z);
+  m.rotation.set(-0.22, ry, 0);
+  m.castShadow = m.receiveShadow = true;
+  scene.add(m);
+};
+makeRamp(22.5, 1.5, 0, 0);
+makeRamp(-22.5, 1.5, 0, Math.PI);
+
+// Ramp surface collision data.
+// Three.js Euler XYZ rotation.set(-0.22, ry, 0):
+//   ry=0:  local z+ → world (0, +0.219, +0.976) — high end at world +z
+//   ry=PI: local z+ → world (0, -0.219, -0.976) — high end is LOCAL z-,
+//          which maps to world +z (same direction).
+// Both ramps slope high at world +z, low at world -z  → both use sign = +1.
+const RAMP_SURFACE_OFFSET = 1.72; // centre_y(1.5) + box_halfH_top(0.22)
+const RAMP_SLOPE = 0.224;         // dy per world-z unit
+const rampColliders = [
+  // ramp at x= 22.5, ry=0   — high at z>0, low at z<0
+  { cx:  22.5, cz: 0, halfW: 4.5, halfL: 7.3, sign: 1 },
+  // ramp at x=-22.5, ry=PI  — high at z>0, low at z<0 (same slope direction)
+  { cx: -22.5, cz: 0, halfW: 4.5, halfL: 7.3, sign: 1 },
+];
+
+// Accent trim strips on walls
+const trimMat = new THREE.MeshStandardMaterial({ color: 0x4f46e5, emissive: 0x4f46e5, emissiveIntensity: 0.8, roughness: 0.3 });
+const addTrim = (w, h, d, x, y, z) => {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), trimMat);
+  m.position.set(x, y, z); scene.add(m);
+};
+addTrim(178, 0.225, 0.225,   0, 0.15, -89.25);
+addTrim(178, 0.225, 0.225,   0, 0.15,  89.25);
+addTrim(0.225, 0.225, 178, -89.25, 0.15, 0);
+addTrim(0.225, 0.225, 178,  89.25, 0.15, 0);
+
+// ── Player state ─────────────────────────────────────────
+const PLAYER_HEIGHT = 1.65;
+const PLAYER_RADIUS = 0.35;
+const GRAVITY = -35;
+const JUMP_VEL = 13;
+const SPEED = 6;
+const SPRINT_SPEED = 10;
+const SLIDE_SPEED    = 22;
+const SLIDE_DURATION = 0.8;
+const SLIDE_HEIGHT   = 0.4;
+const SLIDE_DECEL    = 7;
+const SLIDE_AIR_DECEL = 2;
+const SLIDE_COOLDOWN = 0.5;
+
+const GRENADE_SPEED  = 28;
+const GRENADE_GRAV   = -28;
+const GRENADE_BOUNCE  = 0.42;
+const GRENADE_FUSE    = 2.2;
+const GRENADE_RADIUS  = 6.5;
+const GRENADE_RECHARGE = 10;
+let grenadeRechargeTimer = 0;
+const grenades = [];
+
+// ── Grenade trajectory preview ────────────────────────────
+const TRAJ_DOTS     = 60;   // animation hide steps (unchanged)
+const TRAJ_STEP     = 0.025; // seconds per arc point (smaller = smoother)
+const TRAJ_MAX_PTS  = 220;  // max arc points for rendering
+const trajLineMat = new THREE.LineBasicMaterial({ color: 0x00ff88, transparent: true, opacity: 0.7 });
+const trajLineGeo = new THREE.BufferGeometry();
+const trajLinePositions = new Float32Array(TRAJ_MAX_PTS * 3);
+trajLineGeo.setAttribute('position', new THREE.BufferAttribute(trajLinePositions, 3));
+const trajLine = new THREE.Line(trajLineGeo, trajLineMat);
+trajLine.visible = false;
+scene.add(trajLine);
+
+let velY        = 0;
+let onGround    = false;
+let airJumpsLeft = 0;
+let isSliding   = false;
+let slideJumping = false;
+let slideVelX   = 0, slideVelZ = 0;
+let slideTimer  = 0;
+let slideCooldown = 0;
+let playerHeight  = PLAYER_HEIGHT;
+let hp     = 150;
+let kills  = 0;
+let deaths = 0;
+
+// ── Weapon definitions ────────────────────────────────────
+const weaponDefs = {
+  rifle:   { name: 'Rifle',   bodyDmg: 7.5, headDmg: 15,  fireRate: 85,  clipSize: 30,       reserve: 90       },
+  handgun: { name: 'Handgun', bodyDmg: 15,  headDmg: 25,  fireRate: 250, clipSize: 12,       reserve: 36       },
+  fists:   { name: 'Fists',   bodyDmg: 30,  headDmg: 30,  fireRate: 350, clipSize: Infinity, reserve: Infinity },
+  grenade: { name: 'Grenade', bodyDmg: 75,  headDmg: 75,  fireRate: 1200, clipSize: 2,       reserve: 0        },
+};
+const weaponState = {
+  rifle:   { ammo: 30,        maxAmmo: 90       },
+  handgun: { ammo: 12,        maxAmmo: 36       },
+  fists:   { ammo: Infinity,  maxAmmo: Infinity },
+  grenade: { ammo: 1,         maxAmmo: 0        },
+};
+
+const MELEE_RANGE = 2.8;
+let punchProgress = 0;
+let punchHand = 'right';
+let punchDmgApplied = false;
+let currentWeaponKey = 'rifle';
+
+function getCurrentWeapon() { return weaponDefs[currentWeaponKey]; }
+function getCurrentState()  { return weaponState[currentWeaponKey]; }
+
+let ammo    = getCurrentState().ammo;
+let maxAmmo = getCurrentState().maxAmmo;
+let clipSize = getCurrentWeapon().clipSize;
+
+function switchWeapon(key) {
+  if (key === currentWeaponKey) return;
+  weaponState[currentWeaponKey].ammo    = ammo;
+  weaponState[currentWeaponKey].maxAmmo = maxAmmo;
+  currentWeaponKey = key;
+  ammo     = getCurrentState().ammo;
+  maxAmmo  = getCurrentState().maxAmmo;
+  clipSize = getCurrentWeapon().clipSize;
+  // Swap 3D viewmodel
+  camera.remove(viewmodel);
+  if (key === 'rifle') viewmodel = vmRifle;
+  else if (key === 'handgun') viewmodel = vmHandgun;
+  else if (key === 'grenade') viewmodel = vmGrenade;
+  else viewmodel = vmFists;
+  camera.add(viewmodel);
+  viewmodel.visible = !(key === 'grenade' && grenadeRechargeTimer > 0);
+  recoilZ = 0; recoilY = 0;
+  isReloading = false; reloadTimer = 0;
+  updateReloadHUD();
+  if (rifleMag)   rifleMag.position.y   = rifleMag.userData.restY;
+  if (handgunMag) handgunMag.position.y = handgunMag.userData.restY;
+  punchProgress = 0;
+  airJumpsLeft = key === 'fists' ? 1 : 0;
+  // Fists and grenade have no ADS / scope
+  if (key === 'fists' || key === 'grenade') { isADS = false; }
+  scopeOverlay.classList.toggle('active', isADS && key === 'rifle');
+  document.body.classList.toggle('ads', isADS && key === 'rifle');
+  document.querySelectorAll('.w-slot').forEach((s, i) => {
+    const slotKeys = ['rifle', 'handgun', 'fists', 'grenade'];
+    s.classList.toggle('active', slotKeys[i] === currentWeaponKey);
+  });
+  document.getElementById('weapon-name').textContent = getCurrentWeapon().name;
+  if (autoFireInterval) { clearInterval(autoFireInterval); autoFireInterval = setInterval(shoot, getCurrentWeapon().fireRate); }
+  updateHUD();
+}
+
+// ── Input ─────────────────────────────────────────────────
+const keys = {};
+let jumpQueued = false;
+document.addEventListener('keydown', e => {
+  if (e.code === 'Escape') controls.unlock();
+  if (e.code === 'Space') {
+    jumpQueued = true;
+    e.preventDefault();
+  }
+  if (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.code === 'AltLeft' || e.code === 'AltRight') {
+    e.preventDefault();
+    if (onGround && !isSliding && slideCooldown <= 0) {
+      const fwd = new THREE.Vector3();
+      camera.getWorldDirection(fwd); fwd.y = 0; fwd.normalize();
+      const right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0,1,0)).normalize();
+      let dx = 0, dz = 0;
+      if (keys['KeyW']) { dx += fwd.x; dz += fwd.z; }
+      if (keys['KeyS']) { dx -= fwd.x; dz -= fwd.z; }
+      if (keys['KeyA']) { dx -= right.x; dz -= right.z; }
+      if (keys['KeyD']) { dx += right.x; dz += right.z; }
+      const len = Math.sqrt(dx*dx + dz*dz);
+      if (len > 0) { dx /= len; dz /= len; } else { dx = fwd.x; dz = fwd.z; }
+      slideVelX = dx * SLIDE_SPEED;
+      slideVelZ = dz * SLIDE_SPEED;
+      isSliding  = true;
+      slideTimer = SLIDE_DURATION;
+    }
+  }
+  if (e.code === 'Digit1') switchWeapon('rifle');
+  if (e.code === 'Digit2') switchWeapon('handgun');
+  if (e.code === 'Digit3') switchWeapon('fists');
+  if (e.code === 'Digit4') switchWeapon('grenade');
+  keys[e.code] = true;
+});
+document.addEventListener('keyup', e => { keys[e.code] = false; });
+
+// ── Bullet tracers ────────────────────────────────────────
+const bulletMat = new THREE.MeshBasicMaterial({ color: 0xffdd44 });
+const bulletGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.55, 5);
+const bullets   = [];  // { mesh, vel, life }
+
+function spawnBullet(sx = 0, sy = 0) {
+  const mesh = new THREE.Mesh(bulletGeo, bulletMat);
+
+  // Compute scattered direction from spread offset in screen space
+  const dir = new THREE.Vector3(sx, sy, 0.5).unproject(camera).sub(camera.position).normalize();
+
+  const origin = camera.position.clone();
+  origin.addScaledVector(dir, 0.6);
+  origin.y -= 0.15;
+  mesh.position.copy(origin);
+
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+
+  scene.add(mesh);
+  bullets.push({ mesh, vel: dir.clone().multiplyScalar(60), life: 1.2 });
+}
+
+function updateBullets(dt) {
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    const b = bullets[i];
+    b.life -= dt;
+    b.mesh.position.addScaledVector(b.vel, dt);
+    if (b.life <= 0) {
+      scene.remove(b.mesh);
+      bullets.splice(i, 1);
+    }
+  }
+}
+
+// ── Line-of-sight wall check (slab method ray-AABB) ──────────
+function hasLineOfSight(from, to) {
+  const dx = to.x - from.x, dy = to.y - from.y, dz = to.z - from.z;
+  const len = Math.sqrt(dx*dx + dy*dy + dz*dz);
+  if (len === 0) return true;
+  const ix = 1/dx, iy = 1/dy, iz = 1/dz;
+  for (const col of colliders) {
+    const t1x = (col.min.x - from.x) * ix, t2x = (col.max.x - from.x) * ix;
+    const t1y = (col.min.y - from.y) * iy, t2y = (col.max.y - from.y) * iy;
+    const t1z = (col.min.z - from.z) * iz, t2z = (col.max.z - from.z) * iz;
+    const tmin = Math.max(Math.min(t1x,t2x), Math.min(t1y,t2y), Math.min(t1z,t2z));
+    const tmax = Math.min(Math.max(t1x,t2x), Math.max(t1y,t2y), Math.max(t1z,t2z));
+    if (tmax >= Math.max(0, tmin) && tmin <= len) return false;
+  }
+  return true;
+}
+
+// ── Enemy bullet tracers ───────────────────────────────────
+const enemyBulletMat = new THREE.MeshBasicMaterial({ color: 0xff5500 });
+const enemyBullets   = [];
+
+function spawnEnemyBullet(enemy, dist) {
+  const mesh = new THREE.Mesh(bulletGeo, enemyBulletMat);
+  const origin = enemy.mesh.position.clone();
+  origin.y += 1.4;
+
+  const toPlayer = camera.position.clone().sub(origin).normalize();
+  const spread   = 0.055 + dist * 0.001;
+  const dir      = toPlayer.clone();
+  dir.x += (Math.random() - 0.5) * 2 * spread;
+  dir.y += (Math.random() - 0.5) * 2 * spread;
+  dir.z += (Math.random() - 0.5) * 2 * spread;
+  dir.normalize();
+
+  origin.addScaledVector(dir, 0.5);
+  mesh.position.copy(origin);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+  scene.add(mesh);
+  enemyBullets.push({ mesh, vel: dir.clone().multiplyScalar(60), life: 1.2 });
+
+  // Hit check — distance-scaled probability, not aimbot
+  const hitChance = Math.max(0.08, 0.52 - dist * 0.012);
+  if (Math.random() < hitChance) {
+    hp -= 10;
+    flashDamage();
+    if (hp <= 0) {
+      hp = 0;
+      deaths++;
+      addKillFeed('<span class="kf-enemy">Enemy</span> eliminated <span class="kf-you">You</span>', false);
+      setTimeout(() => {
+        hp = 150;
+        ammo = weaponState[currentWeaponKey].ammo = getCurrentWeapon().clipSize;
+        maxAmmo = weaponState[currentWeaponKey].maxAmmo = getCurrentWeapon().reserve;
+        clipSize = getCurrentWeapon().clipSize;
+        camera.position.set(0, PLAYER_HEIGHT, 45);
+        velY = 0; isSliding = false; slideVelX = 0; slideVelZ = 0;
+        isReloading = false; reloadTimer = 0; updateReloadHUD();
+        isADS = false;
+        scopeOverlay.classList.remove('active');
+        document.body.classList.remove('ads');
+        updateHUD();
+      }, 1500);
+    }
+    updateHUD();
+  }
+}
+
+function updateEnemyBullets(dt) {
+  for (let i = enemyBullets.length - 1; i >= 0; i--) {
+    const b = enemyBullets[i];
+    b.life -= dt;
+    b.mesh.position.addScaledVector(b.vel, dt);
+    if (b.life <= 0) { scene.remove(b.mesh); enemyBullets.splice(i, 1); }
+  }
+}
+
+// ── Shooting ──────────────────────────────────────────────
+const raycaster = new THREE.Raycaster();
+let hitMarkerTimeout = null;
+
+const enemyDmgState = new Map(); // enemy → { el, total, isHeadshot, hideTimer }
+
+function spawnDamageNumber(enemy, damage, isHeadshot) {
+  const worldPos = enemy.mesh.position;
+  const pos = new THREE.Vector3(worldPos.x, worldPos.y + 1.8, worldPos.z);
+  pos.project(camera);
+  if (pos.z > 1) return;
+  const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
+  const y = (-pos.y * 0.5 + 0.5) * window.innerHeight;
+
+  let state = enemyDmgState.get(enemy);
+  if (state) {
+    clearTimeout(state.hideTimer);
+    state.total += damage;
+    if (isHeadshot) state.isHeadshot = true;
+    state.el.textContent = Math.round(state.total);
+    state.el.style.left = x + 'px';
+    state.el.style.top  = y + 'px';
+    state.el.classList.remove('pop');
+    void state.el.offsetWidth;
+    state.el.classList.add('pop');
+  } else {
+    const el = document.createElement('div');
+    el.className = 'dmg-number' + (isHeadshot ? ' headshot' : '');
+    el.textContent = Math.round(damage);
+    el.style.left = x + 'px';
+    el.style.top  = y + 'px';
+    document.body.appendChild(el);
+    state = { el, total: damage, isHeadshot, hideTimer: null };
+    enemyDmgState.set(enemy, state);
+  }
+
+  state.hideTimer = setTimeout(() => {
+    state.el.classList.add('hiding');
+    setTimeout(() => { state.el.remove(); enemyDmgState.delete(enemy); }, 550);
+  }, 1500);
+}
+
+function flashHitMarker() {
+  const hm = document.getElementById('hit-marker');
+  hm.classList.add('show');
+  clearTimeout(hitMarkerTimeout);
+  hitMarkerTimeout = setTimeout(() => hm.classList.remove('show'), 120);
+}
+
+function flashDamage() {
+  const v = document.getElementById('vignette');
+  v.classList.add('hit');
+  setTimeout(() => v.classList.remove('hit'), 200);
+}
+
+function addKillFeed(text, isPlayer) {
+  const kf = document.getElementById('killfeed');
+  const el = document.createElement('div');
+  el.className = 'kf-entry';
+  el.innerHTML = text;
+  kf.prepend(el);
+  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 500); }, 3000);
+  while (kf.children.length > 4) kf.lastChild.remove();
+}
+
+function updateHUD() {
+  document.getElementById('hp-val').textContent = Math.max(0, hp);
+  document.getElementById('health-bar').style.width = Math.max(0, hp) + '%';
+  document.getElementById('health-bar').style.background =
+    hp > 60 ? '#4ade80' : hp > 30 ? '#fbbf24' : '#f87171';
+  document.getElementById('ammo-display').textContent =
+    currentWeaponKey === 'fists'   ? '∞' :
+    currentWeaponKey === 'grenade' ? (ammo > 0 ? '1 grenade' : `Recharging ${Math.ceil(grenadeRechargeTimer)}s`) :
+    ammo + ' / ' + maxAmmo;
+  document.getElementById('score-display').textContent = kills + ' — ' + deaths;
+
+  // Grenade cooldown bar
+  const cdBg   = document.getElementById('grenade-cd-bg');
+  const cdFill = document.getElementById('grenade-cd-fill');
+  if (grenadeRechargeTimer > 0) {
+    cdBg.style.display = 'block';
+    cdFill.style.width = (grenadeRechargeTimer / GRENADE_RECHARGE * 100) + '%';
+  } else {
+    cdBg.style.display = 'none';
+  }
+}
+updateHUD();
+
+// ── Rifle builder ─────────────────────────────────────────
+// SCAR material palette
+const scarFDE   = new THREE.MeshStandardMaterial({ color: 0xC4A058, roughness: 0.65, metalness: 0.12 }); // Flat Dark Earth
+const scarMetal = new THREE.MeshStandardMaterial({ color: 0x2E2E2E, roughness: 0.35, metalness: 0.90 }); // Dark barrel/bolt steel
+const scarBlack = new THREE.MeshStandardMaterial({ color: 0x1A1A1A, roughness: 0.75, metalness: 0.05 }); // Black polymer
+
+function buildRifle() {
+  const g = new THREE.Group();
+
+  // Barrel — slender dark steel tube
+  const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.028, 0.52), scarMetal);
+  barrel.position.set(0, 0.016, -0.27);
+  g.add(barrel);
+
+  // Flash hider at muzzle
+  const flash = new THREE.Mesh(new THREE.CylinderGeometry(0.020, 0.020, 0.055, 6), scarMetal);
+  flash.rotation.x = Math.PI / 2;
+  flash.position.set(0, 0.016, -0.52);
+  g.add(flash);
+
+  // Upper receiver — wide boxy SCAR block (FDE)
+  const upper = new THREE.Mesh(new THREE.BoxGeometry(0.068, 0.078, 0.29), scarFDE);
+  upper.position.set(0, 0.004, 0.01);
+  g.add(upper);
+
+  // Flat-top Picatinny rail along the top
+  const rail = new THREE.Mesh(new THREE.BoxGeometry(0.038, 0.014, 0.28), scarBlack);
+  rail.position.set(0, 0.052, 0.01);
+  g.add(rail);
+
+  // Handguard (forward, wraps barrel — FDE with slight bevel feel)
+  const hguard = new THREE.Mesh(new THREE.BoxGeometry(0.062, 0.065, 0.20), scarFDE);
+  hguard.position.set(0, 0.004, -0.195);
+  g.add(hguard);
+
+  // Lower receiver / trigger housing (black polymer)
+  const lower = new THREE.Mesh(new THREE.BoxGeometry(0.060, 0.048, 0.20), scarBlack);
+  lower.position.set(0, -0.042, 0.02);
+  g.add(lower);
+
+  // Pistol grip — vertical black polymer
+  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.040, 0.110, 0.048), scarBlack);
+  grip.position.set(0, -0.098, 0.068);
+  g.add(grip);
+
+  // Magazine — FDE box mag (SCAR 20-rd)
+  const mag = new THREE.Mesh(new THREE.BoxGeometry(0.034, 0.108, 0.044), scarFDE);
+  mag.position.set(0, -0.108, -0.010);
+  mag.name = 'magazine';
+  mag.userData.restY = -0.108;
+  g.add(mag);
+
+  // Folding stock body (FDE, skeletal tube style)
+  const stockMain = new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.042, 0.18), scarFDE);
+  stockMain.position.set(0, 0.002, 0.225);
+  g.add(stockMain);
+
+  // Stock butt pad (black rubber)
+  const butt = new THREE.Mesh(new THREE.BoxGeometry(0.046, 0.068, 0.022), scarBlack);
+  butt.position.set(0, -0.002, 0.322);
+  g.add(butt);
+
+  // Charging handle — SCAR side-mounted (left protrusion)
+  const charge = new THREE.Mesh(new THREE.BoxGeometry(0.038, 0.018, 0.022), scarMetal);
+  charge.position.set(-0.050, 0.012, -0.055);
+  g.add(charge);
+
+  // Rear flip-up sight on rail
+  const rSight = new THREE.Mesh(new THREE.BoxGeometry(0.010, 0.026, 0.012), scarBlack);
+  rSight.position.set(0, 0.066, 0.07);
+  g.add(rSight);
+
+  // Front sight post on handguard
+  const fSight = new THREE.Mesh(new THREE.BoxGeometry(0.010, 0.028, 0.010), scarBlack);
+  fSight.position.set(0, 0.050, -0.275);
+  g.add(fSight);
+
+  return g;
+}
+
+// ── Dummy enemies ────────────────────────────────────────
+const enemies = [];
+
+function buildBaconHairCharacter() {
+  const g = new THREE.Group();
+
+  // Body sub-group — all visual parts go here so we can
+  // animate the pose (crouch, lean) independently of the
+  // root group which handles floor / physics position.
+  const body = new THREE.Group();
+  body.name = 'body';
+  g.add(body);
+
+  const skinMat      = new THREE.MeshStandardMaterial({ color: 0xF5C17A, roughness: 0.6 });
+  const shirtMat     = new THREE.MeshStandardMaterial({ color: 0x6CC5FA, roughness: 0.7 });
+  const pantsMat     = new THREE.MeshStandardMaterial({ color: 0x2A52BE, roughness: 0.8 });
+  const hairBrownMat = new THREE.MeshStandardMaterial({ color: 0x7B3F00, roughness: 0.8 });
+  const hairPinkMat  = new THREE.MeshStandardMaterial({ color: 0xE8969A, roughness: 0.8 });
+
+  // Legs
+  const legGeo = new THREE.BoxGeometry(0.18, 0.62, 0.20);
+  const legL = new THREE.Mesh(legGeo, pantsMat); legL.position.set(-0.11, 0.31, 0); legL.castShadow = true; body.add(legL);
+  const legR = new THREE.Mesh(legGeo, pantsMat); legR.position.set( 0.11, 0.31, 0); legR.castShadow = true; body.add(legR);
+
+  // Torso
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.70, 0.24), shirtMat);
+  torso.position.set(0, 0.97, 0); torso.castShadow = true; body.add(torso);
+
+  // Arms
+  const armGeo = new THREE.BoxGeometry(0.17, 0.66, 0.18);
+  const armL = new THREE.Mesh(armGeo, skinMat); armL.position.set(-0.335, 0.97, 0); armL.castShadow = true; body.add(armL);
+  const armR = new THREE.Mesh(armGeo, skinMat); armR.position.set( 0.335, 0.97, 0); armR.castShadow = true; body.add(armR);
+
+  // Head (cube — classic Roblox block head)
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.52, 0.52), skinMat);
+  head.position.set(0, 1.58, 0); head.castShadow = true;
+  head.userData.isHead = true;
+  body.add(head);
+
+  // Bacon hair — 4 alternating brown/pink strips running front-to-back across top of head
+  const hairMats = [hairBrownMat, hairPinkMat, hairBrownMat, hairPinkMat];
+  const stripeZs = [-0.165, -0.055, 0.055, 0.165];
+  stripeZs.forEach((z, i) => {
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.10, 0.11), hairMats[i]);
+    stripe.position.set(0, 1.58 + 0.26 + 0.05, z);
+    stripe.castShadow = true;
+    body.add(stripe);
+  });
+  // Side-hanging bacon strips (left side drooping down)
+  [-0.165, -0.055, 0.055, 0.165].forEach((z, i) => {
+    const hang = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.20, 0.11), hairMats[i]);
+    hang.position.set(-0.295, 1.58 + 0.12, z);
+    hang.castShadow = true;
+    body.add(hang);
+  });
+
+  return g;
+}
+
+function spawnEnemy(x, z) {
+  const group = buildBaconHairCharacter();
+
+  // Rifle in enemy's right hand — attach to body sub-group so it
+  // moves with the slide crouch / lean animation.
+  const body = group.getObjectByName('body');
+  const enemyRifle = buildRifle();
+  enemyRifle.position.set(0.38, 0.78, 0);
+  enemyRifle.rotation.y = Math.PI;
+  body.add(enemyRifle);
+
+  group.position.set(x, 0, z);
+  scene.add(group);
+
+  enemies.push({
+    mesh: group, hp: 150, alive: true, velY: 0, onGround: false,
+    shootTimer:   0.5 + Math.random() * 1.5,
+    strafeDir:    0, strafeTimer: Math.random() * 2,
+    jumpTimer:    2  + Math.random() * 4,
+    isSliding: false, slideVelX: 0, slideVelZ: 0, slideDurTimer: 0,
+    slideTimer: Math.random() * 4, slideCooldown: 0,
+    slideAnimT: 0,   // 0 = standing, 1 = fully in slide pose
+  });
+}
+
+spawnEnemy(22.5, 22.5);
+spawnEnemy(-22.5, -22.5);
+
+function applyMeleeDamage() {
+  const fwd = new THREE.Vector3();
+  camera.getWorldDirection(fwd);
+  const aliveEnemies = enemies.filter(e => e.alive);
+  for (const enemy of aliveEnemies) {
+    const dist = camera.position.distanceTo(enemy.mesh.position);
+    if (dist > MELEE_RANGE) continue;
+    // Check it's roughly in front
+    const toEnemy = enemy.mesh.position.clone().sub(camera.position).normalize();
+    if (fwd.dot(toEnemy) < 0.3) continue;
+    const damage = weaponDefs.fists.bodyDmg;
+    flashHitMarker();
+    enemy.hp -= damage;
+    spawnDamageNumber(enemy, damage, false);
+    if (enemy.hp <= 0) {
+      enemy.alive = false;
+      scene.remove(enemy.mesh);
+      const ds = enemyDmgState.get(enemy);
+      if (ds) { clearTimeout(ds.hideTimer); ds.el.remove(); enemyDmgState.delete(enemy); }
+      kills++;
+      hp = Math.min(150, hp + 30);
+      addKillFeed('<span class="kf-you">You</span> eliminated <span class="kf-enemy">Enemy</span> 💀', true);
+      updateHUD();
+      setTimeout(() => {
+        const positions = [[22.5,22.5],[-22.5,-22.5],[30,-15],[-15,30],[0,37.5],[-37.5,0]];
+        const [ex, ez] = positions[Math.floor(Math.random() * positions.length)];
+        enemy.hp = 150; enemy.velY = 0; enemy.onGround = false;
+        enemy.shootTimer = 0.5 + Math.random() * 1.5; enemy.strafeDir = 0; enemy.strafeTimer = 1;
+        enemy.jumpTimer = 2 + Math.random() * 3; enemy.isSliding = false; enemy.slideVelX = 0; enemy.slideVelZ = 0; enemy.slideDurTimer = 0; enemy.slideTimer = 2; enemy.slideCooldown = 0;
+        enemy.mesh.position.set(ex, 0, ez);
+        scene.add(enemy.mesh);
+        enemy.alive = true;
+      }, 4000);
+    }
+    break;
+  }
+  updateHUD();
+}
+
+// ── Grenade trajectory preview update ─────────────────────
+// Helper: simulate the arc from current aim and return an array of Vector3 positions.
+function computeArcPositions() {
+  const fwd = new THREE.Vector3();
+  camera.getWorldDirection(fwd);
+  let px = camera.position.x + fwd.x * 0.6;
+  let py = camera.position.y - 0.1;
+  let pz = camera.position.z + fwd.z * 0.6;
+  let vx = fwd.x * GRENADE_SPEED;
+  let vy = fwd.y * GRENADE_SPEED + 4;
+  let vz = fwd.z * GRENADE_SPEED;
+  const pts = [];
+  for (let i = 0; i < TRAJ_MAX_PTS; i++) {
+    vy += GRENADE_GRAV * TRAJ_STEP;
+    px += vx * TRAJ_STEP; py += vy * TRAJ_STEP; pz += vz * TRAJ_STEP;
+    // Simulate ground bounce (mirrors actual grenade physics)
+    if (py <= 0.12) {
+      py = 0.12;
+      vy = Math.abs(vy) * GRENADE_BOUNCE;
+      vx *= 0.82;
+      vz *= 0.82;
+    }
+    pts.push(new THREE.Vector3(px, py, pz));
+  }
+  return pts;
+}
+
+function updateTrajectory() {
+  const show = currentWeaponKey === 'grenade' && controls.isLocked && isMouseDown;
+  if (!show) {
+    trajLine.visible = false;
+    return;
+  }
+
+  // 1.5s full line, then 0.5s shrink, then hand explode at 2.0s total
+  const holdSecs = performance.now() / 1000 - mouseDownTime;
+  const hiddenFraction = holdSecs < 2.0 ? 0 : Math.min(1, (holdSecs - 2.0) / 2.0);
+
+  // When fully cooked, blow up in hand
+  if (hiddenFraction >= 1 && !handExplodeTriggered) grenadeHandExplode();
+
+  // Recompute arc live from current aim, capped to a fixed display length
+  const pts = computeArcPositions();
+  const FIXED_LINE_PTS = 120;
+  const cappedLen = Math.min(pts.length, FIXED_LINE_PTS);
+
+  // If arc is too short (steep downward aim), extend with a stub in camera direction
+  if (cappedLen < 2) {
+    const fwdStub = new THREE.Vector3();
+    camera.getWorldDirection(fwdStub);
+    const base = pts.length > 0 ? pts[pts.length - 1] : camera.position.clone().addScaledVector(fwdStub, 0.6);
+    pts.push(base.clone().addScaledVector(fwdStub, 0.3));
+    pts.push(base.clone().addScaledVector(fwdStub, 0.6));
+  }
+  const finalLen = Math.min(pts.length, FIXED_LINE_PTS);
+
+  // Shrink from full to 0 — always keep at least 2 points until hand explode
+  const rawCount = Math.round((1 - hiddenFraction) * finalLen);
+  const visibleCount = hiddenFraction < 1 ? Math.max(2, rawCount) : 0;
+  if (visibleCount < 2) { trajLine.visible = false; return; }
+
+  const positions = trajLineGeo.attributes.position.array;
+  for (let i = 0; i < visibleCount; i++) {
+    positions[i * 3]     = pts[i].x;
+    positions[i * 3 + 1] = pts[i].y;
+    positions[i * 3 + 2] = pts[i].z;
+  }
+  trajLineGeo.attributes.position.needsUpdate = true;
+  trajLineGeo.setDrawRange(0, visibleCount);
+  trajLine.visible = true;
+}
+
+// ── Grenade throw / physics ───────────────────────────────
+const grenadeBodyMat = new THREE.MeshStandardMaterial({ color: 0x3a6e3a, roughness: 0.6, metalness: 0.4 });
+const grenadeBodyGeo = new THREE.SphereGeometry(0.12, 8, 6);
+const explodeLight   = new THREE.PointLight(0xff8800, 0, 18);
+scene.add(explodeLight);
+
+function throwGrenade() {
+  if (ammo <= 0) return;
+  ammo--;
+  if (ammo <= 0) grenadeRechargeTimer = GRENADE_RECHARGE;
+  updateHUD();
+
+  const mesh = new THREE.Mesh(grenadeBodyGeo, grenadeBodyMat);
+  const fwd = new THREE.Vector3();
+  camera.getWorldDirection(fwd);
+  mesh.position.copy(camera.position).addScaledVector(fwd, 0.6);
+  mesh.position.y -= 0.1;
+  scene.add(mesh);
+
+  // Fuse = time to reach the visible line tip (mirrors display calculation exactly)
+  const holdSecs2       = performance.now() / 1000 - mouseDownTime;
+  const hiddenFraction2 = holdSecs2 < 2.0 ? 0 : Math.min(1, (holdSecs2 - 2.0) / 2.0);
+  const arcPts2         = computeArcPositions();
+  let   finalLen2       = Math.min(arcPts2.length, 120);
+  if (finalLen2 < 2) finalLen2 = 2;
+  const rawCount2    = Math.round((1 - hiddenFraction2) * finalLen2);
+  const visCount2    = hiddenFraction2 < 1 ? Math.max(2, rawCount2) : 0;
+  const airFuse      = Math.max(TRAJ_STEP, visCount2 * TRAJ_STEP);
+
+  grenades.push({
+    mesh,
+    vel: new THREE.Vector3(fwd.x * GRENADE_SPEED, fwd.y * GRENADE_SPEED + 4, fwd.z * GRENADE_SPEED),
+    fuse: airFuse,
+    airExplode: true,
+    hasLanded: false,
+  });
+}
+
+function explodeGrenade(grn) {
+  scene.remove(grn.mesh);
+
+  // Flash light
+  explodeLight.position.copy(grn.mesh.position);
+  explodeLight.intensity = 20;
+  setTimeout(() => { explodeLight.intensity = 0; }, 180);
+
+  // Expanding sphere — grows to exactly GRENADE_RADIUS then fades
+  const blastGeo = new THREE.SphereGeometry(1, 14, 10);
+  const blastMat = new THREE.MeshBasicMaterial({ color: 0xff5500, transparent: true, opacity: 0.75, side: THREE.DoubleSide });
+  const blast = new THREE.Mesh(blastGeo, blastMat);
+  blast.position.copy(grn.mesh.position);
+  scene.add(blast);
+  let blastAge = 0;
+  const BLAST_DUR = 0.4;
+  const blastOrigin = grn.mesh.position.clone();
+  const expandBlast = setInterval(() => {
+    blastAge += 0.016;
+    const t = Math.min(blastAge / BLAST_DUR, 1);
+    blast.scale.setScalar(t * GRENADE_RADIUS * 1.125);
+    blast.material.opacity = 0.75 * (1 - t);
+    if (t >= 1) { clearInterval(expandBlast); scene.remove(blast); }
+  }, 16);
+
+  // Damage + knockback enemies in radius
+  for (const enemy of enemies) {
+    if (!enemy.alive) continue;
+    const dist = blastOrigin.distanceTo(enemy.mesh.position);
+    if (dist > GRENADE_RADIUS) continue;
+    const damage  = 75;
+    flashHitMarker();
+    enemy.hp -= damage;
+    spawnDamageNumber(enemy, damage, false);
+    // Enemy knockback — push away from blast
+    const eFalloff  = 1 - dist / GRENADE_RADIUS;
+    const blastAway = new THREE.Vector3().subVectors(enemy.mesh.position, blastOrigin).normalize();
+    enemy.velY      = Math.max(enemy.velY, 42 * eFalloff);
+    enemy.onGround  = false;
+    enemy.isSliding = false;
+    enemy.slideVelX += blastAway.x * 32 * eFalloff;
+    enemy.slideVelZ += blastAway.z * 32 * eFalloff;
+    if (enemy.hp <= 0) {
+      enemy.alive = false;
+      scene.remove(enemy.mesh);
+      const ds = enemyDmgState.get(enemy);
+      if (ds) { clearTimeout(ds.hideTimer); ds.el.remove(); enemyDmgState.delete(enemy); }
+      kills++;
+      hp = Math.min(150, hp + 30);
+      addKillFeed('<span class="kf-you">You</span> eliminated <span class="kf-enemy">Enemy</span> 💀', true);
+      updateHUD();
+      setTimeout(() => {
+        const positions = [[22.5,22.5],[-22.5,-22.5],[30,-15],[-15,30],[0,37.5],[-37.5,0]];
+        const [ex, ez] = positions[Math.floor(Math.random() * positions.length)];
+        enemy.hp = 150; enemy.velY = 0; enemy.onGround = false;
+        enemy.shootTimer = 0.5 + Math.random() * 1.5; enemy.strafeDir = 0; enemy.strafeTimer = 1;
+        enemy.jumpTimer = 2 + Math.random() * 3; enemy.isSliding = false; enemy.slideVelX = 0; enemy.slideVelZ = 0; enemy.slideDurTimer = 0; enemy.slideTimer = 2; enemy.slideCooldown = 0;
+        enemy.mesh.position.set(ex, 0, ez);
+        scene.add(enemy.mesh);
+        enemy.alive = true;
+      }, 4000);
+    }
+  }
+
+  // Player knockback — push away from blast, scaled by proximity
+  const playerDist = blastOrigin.distanceTo(camera.position);
+  if (playerDist < GRENADE_RADIUS) {
+    const falloff = 1 - playerDist / GRENADE_RADIUS; // 1 at centre, 0 at edge
+    // Direction from blast toward player (horizontal component)
+    const awayDir = new THREE.Vector3().subVectors(camera.position, blastOrigin).normalize();
+    velY = Math.max(velY, 37 * falloff);
+    onGround  = false;
+    isSliding = false;
+    slideVelX += awayDir.x * 37 * falloff;
+    slideVelZ += awayDir.z * 37 * falloff;
+  }
+}
+
+function grenadeHandExplode() {
+  if (ammo <= 0) return;
+  handExplodeTriggered = true;
+  isMouseDown = false;
+  ammo--;
+  if (ammo <= 0) grenadeRechargeTimer = GRENADE_RECHARGE;
+  updateHUD();
+
+  // Knockback — launch player upward and in their look direction
+  const kbFwd = new THREE.Vector3();
+  camera.getWorldDirection(kbFwd);
+  velY = 30;
+  onGround = false;
+  isSliding = false;
+  slideVelX = -kbFwd.x * 30;
+  slideVelZ = -kbFwd.z * 30;
+
+  // Damage + knockback enemies in radius from camera position
+  const handOrigin = camera.position.clone();
+  for (const enemy of enemies) {
+    if (!enemy.alive) continue;
+    const dist = handOrigin.distanceTo(enemy.mesh.position);
+    if (dist > GRENADE_RADIUS) continue;
+    const damage  = 75;
+    flashHitMarker();
+    enemy.hp -= damage;
+    spawnDamageNumber(enemy, damage, false);
+    // Enemy knockback — push away from player
+    const eFalloff  = 1 - dist / GRENADE_RADIUS;
+    const blastAway = new THREE.Vector3().subVectors(enemy.mesh.position, handOrigin).normalize();
+    enemy.velY      = Math.max(enemy.velY, 20 * eFalloff);
+    enemy.onGround  = false;
+    enemy.isSliding = false;
+    enemy.slideVelX += blastAway.x * 14 * eFalloff;
+    enemy.slideVelZ += blastAway.z * 14 * eFalloff;
+    if (enemy.hp <= 0) {
+      enemy.alive = false;
+      scene.remove(enemy.mesh);
+      const ds = enemyDmgState.get(enemy);
+      if (ds) { clearTimeout(ds.hideTimer); ds.el.remove(); enemyDmgState.delete(enemy); }
+      kills++;
+      hp = Math.min(150, hp + 30);
+      addKillFeed('<span class="kf-you">You</span> eliminated <span class="kf-enemy">Enemy</span> 💀', true);
+      updateHUD();
+      setTimeout(() => {
+        const positions = [[22.5,22.5],[-22.5,-22.5],[30,-15],[-15,30],[0,37.5],[-37.5,0]];
+        const [ex, ez] = positions[Math.floor(Math.random() * positions.length)];
+        enemy.hp = 150; enemy.velY = 0; enemy.onGround = false;
+        enemy.shootTimer = 0.5 + Math.random() * 1.5; enemy.strafeDir = 0; enemy.strafeTimer = 1;
+        enemy.jumpTimer = 2 + Math.random() * 3; enemy.isSliding = false; enemy.slideVelX = 0; enemy.slideVelZ = 0; enemy.slideDurTimer = 0; enemy.slideTimer = 2; enemy.slideCooldown = 0;
+        enemy.mesh.position.set(ex, 0, ez);
+        scene.add(enemy.mesh);
+        enemy.alive = true;
+      }, 4000);
+    }
+  }
+
+  // Visual blast at camera (eye) position
+  explodeLight.position.copy(camera.position);
+  explodeLight.intensity = 20;
+  setTimeout(() => { explodeLight.intensity = 0; }, 180);
+
+  const blastGeo2 = new THREE.SphereGeometry(1, 14, 10);
+  const blastMat2 = new THREE.MeshBasicMaterial({ color: 0xff5500, transparent: true, opacity: 0.75, side: THREE.DoubleSide });
+  const blast2 = new THREE.Mesh(blastGeo2, blastMat2);
+  blast2.position.copy(camera.position);
+  scene.add(blast2);
+  let blastAge2 = 0;
+  const iv = setInterval(() => {
+    blastAge2 += 0.016;
+    const t = Math.min(blastAge2 / 0.4, 1);
+    blast2.scale.setScalar(t * GRENADE_RADIUS * 1.125);
+    blast2.material.opacity = 0.75 * (1 - t);
+    if (t >= 1) { clearInterval(iv); scene.remove(blast2); }
+  }, 16);
+}
+
+function updateGrenades(dt) {
+  for (let i = grenades.length - 1; i >= 0; i--) {
+    const grn = grenades[i];
+    grn.fuse -= dt;
+
+    // Apply gravity
+    grn.vel.y += GRENADE_GRAV * dt;
+    grn.mesh.position.addScaledVector(grn.vel, dt);
+
+    // Spin for visual flair
+    grn.mesh.rotation.x += 3 * dt;
+    grn.mesh.rotation.z += 2 * dt;
+
+    // Floor bounce
+    if (grn.mesh.position.y <= 0.12) {
+      grn.mesh.position.y = 0.12;
+      grn.vel.y = Math.abs(grn.vel.y) * GRENADE_BOUNCE;
+      grn.vel.x *= 0.82;
+      grn.vel.z *= 0.82;
+      grn.hasLanded = true;
+    }
+
+    // Box collider bounce
+    const GR = 0.12;
+    const gp = grn.mesh.position;
+    for (const col of colliders) {
+      if (
+        gp.x + GR > col.min.x && gp.x - GR < col.max.x &&
+        gp.y + GR > col.min.y && gp.y - GR < col.max.y &&
+        gp.z + GR > col.min.z && gp.z - GR < col.max.z
+      ) {
+        const ox = Math.min(gp.x + GR - col.min.x, col.max.x - (gp.x - GR));
+        const oy = Math.min(gp.y + GR - col.min.y, col.max.y - (gp.y - GR));
+        const oz = Math.min(gp.z + GR - col.min.z, col.max.z - (gp.z - GR));
+        if (ox <= oy && ox <= oz) {
+          gp.x += (gp.x < (col.min.x + col.max.x) * 0.5) ? -ox : ox;
+          grn.vel.x *= -GRENADE_BOUNCE;
+          grn.vel.y *= 0.88; grn.vel.z *= 0.88;
+        } else if (oz <= oy) {
+          gp.z += (gp.z < (col.min.z + col.max.z) * 0.5) ? -oz : oz;
+          grn.vel.z *= -GRENADE_BOUNCE;
+          grn.vel.x *= 0.88; grn.vel.y *= 0.88;
+        } else {
+          const onTop = gp.y > (col.min.y + col.max.y) * 0.5;
+          gp.y += onTop ? oy : -oy;
+          grn.vel.y = onTop ? Math.abs(grn.vel.y) * GRENADE_BOUNCE : -Math.abs(grn.vel.y) * GRENADE_BOUNCE;
+          grn.vel.x *= 0.82; grn.vel.z *= 0.82;
+        }
+        break;
+      }
+    }
+
+    // Arena wall bounce
+    const bnd = 88;
+    if (grn.mesh.position.x > bnd)  { grn.mesh.position.x = bnd;  grn.vel.x *= -0.6; }
+    if (grn.mesh.position.x < -bnd) { grn.mesh.position.x = -bnd; grn.vel.x *= -0.6; }
+    if (grn.mesh.position.z > bnd)  { grn.mesh.position.z = bnd;  grn.vel.z *= -0.6; }
+    if (grn.mesh.position.z < -bnd) { grn.mesh.position.z = -bnd; grn.vel.z *= -0.6; }
+
+    // Fuse expired → explode
+    if (grn.fuse <= 0) {
+      explodeGrenade(grn);
+      grenades.splice(i, 1);
+    }
+  }
+}
+
+function shoot() {
+  if (!controls.isLocked) return;
+  if (isReloading) return;
+  if (currentWeaponKey === 'fists') {
+    if (punchProgress > 0) return;
+    punchProgress = 0.001;
+    punchHand = punchHand === 'right' ? 'left' : 'right';
+    punchDmgApplied = false;
+    return;
+  }
+  if (currentWeaponKey === 'grenade') {
+    throwGrenade();
+    return;
+  }
+  if (ammo <= 0) return;
+  ammo--;
+
+  const spread = isADS ? 0 : 0.02;
+  const sx = (Math.random() - 0.5) * 2 * spread;
+  const sy = (Math.random() - 0.5) * 2 * spread;
+
+  spawnBullet(sx, sy);  // tracer follows actual shot direction
+  recoilZ = 0.045;
+  recoilY = 0.018;
+
+  raycaster.setFromCamera(new THREE.Vector2(sx, sy), camera);
+  const meshes = enemies.filter(e => e.alive).map(e => e.mesh);
+  const hits   = raycaster.intersectObjects(meshes, true);
+
+  if (hits.length > 0) {
+    // Find which enemy was hit (traverse up for nested rifle parts)
+    const hitMesh = hits[0].object;
+    let node = hitMesh;
+    let enemy = null;
+    while (node && !enemy) {
+      enemy = enemies.find(e => e.mesh === node);
+      node = node.parent;
+    }
+    const isHeadshot = hitMesh.userData.isHead === true;
+    const damage = isHeadshot ? getCurrentWeapon().headDmg : getCurrentWeapon().bodyDmg;
+    if (enemy && enemy.alive) {
+      flashHitMarker();
+      enemy.hp -= damage;
+      spawnDamageNumber(enemy, damage, isHeadshot);
+      if (enemy.hp <= 0) {
+        enemy.alive = false;
+        scene.remove(enemy.mesh);
+        const ds = enemyDmgState.get(enemy);
+        if (ds) { clearTimeout(ds.hideTimer); ds.el.remove(); enemyDmgState.delete(enemy); }
+        kills++;
+        hp = Math.min(150, hp + 30);
+        addKillFeed('<span class="kf-you">You</span> eliminated <span class="kf-enemy">Enemy</span> 💀', true);
+        updateHUD();
+        // Respawn after 4s
+        setTimeout(() => {
+          const positions = [[22.5,22.5],[-22.5,-22.5],[30,-15],[-15,30],[0,37.5],[-37.5,0]];
+          const [ex, ez] = positions[Math.floor(Math.random() * positions.length)];
+          enemy.hp = 150; enemy.velY = 0; enemy.onGround = false;
+        enemy.shootTimer = 0.5 + Math.random() * 1.5; enemy.strafeDir = 0; enemy.strafeTimer = 1;
+        enemy.jumpTimer = 2 + Math.random() * 3; enemy.isSliding = false; enemy.slideVelX = 0; enemy.slideVelZ = 0; enemy.slideDurTimer = 0; enemy.slideTimer = 2; enemy.slideCooldown = 0;
+          enemy.mesh.position.set(ex, 0, ez);
+          scene.add(enemy.mesh);
+          enemy.alive = true;
+        }, 4000);
+      }
+    }
+  }
+  updateHUD();
+
+  // Muzzle flash effect
+  shootFlash();
+}
+
+// Muzzle flash
+let flashTimeout;
+const flashLight = new THREE.PointLight(0xffcc44, 0, 3);
+camera.add(flashLight);
+scene.add(camera);
+
+// ── Handgun viewmodel ────────────────────────────────────
+function buildHandgun() {
+  const g = new THREE.Group();
+  const matSlide  = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.4, metalness: 0.85 });
+  const matFrame  = new THREE.MeshStandardMaterial({ color: 0x1c1c1c, roughness: 0.7, metalness: 0.1  });
+  const matBarrel = new THREE.MeshStandardMaterial({ color: 0x404040, roughness: 0.3, metalness: 0.95 });
+
+  // Barrel
+  const barrel = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.022, 0.22), matBarrel);
+  barrel.position.set(0, 0.010, -0.115);
+  g.add(barrel);
+
+  // Slide
+  const slide = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.058, 0.25), matSlide);
+  slide.position.set(0, 0, 0);
+  g.add(slide);
+
+  // Ejection port
+  const eject = new THREE.Mesh(new THREE.BoxGeometry(0.026, 0.020, 0.080), matFrame);
+  eject.position.set(0.016, 0.023, -0.028);
+  g.add(eject);
+
+  // Frame / lower receiver
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(0.052, 0.040, 0.200), matFrame);
+  frame.position.set(0, -0.050, 0.010);
+  g.add(frame);
+
+  // Trigger guard
+  const guard = new THREE.Mesh(new THREE.BoxGeometry(0.040, 0.008, 0.055), matFrame);
+  guard.position.set(0, -0.073, -0.044);
+  g.add(guard);
+
+  // Grip
+  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.046, 0.118, 0.050), matFrame);
+  grip.position.set(0, -0.113, 0.068);
+  grip.rotation.x = 0.17;
+  g.add(grip);
+
+  // Magazine (fills grip, base-plate protrudes ~8 mm below grip bottom)
+  const matMag = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.55, metalness: 0.7 });
+  const mag = new THREE.Mesh(new THREE.BoxGeometry(0.038, 0.095, 0.044), matMag);
+  mag.position.set(0, -0.1325, 0.068);
+  mag.name = 'magazine';
+  mag.userData.restY = -0.1325;
+  g.add(mag);
+
+  // Front sight
+  const fSight = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.014, 0.008), matSlide);
+  fSight.position.set(0, 0.038, -0.115);
+  g.add(fSight);
+
+  // Rear sight
+  const rSight = new THREE.Mesh(new THREE.BoxGeometry(0.030, 0.012, 0.008), matSlide);
+  rSight.position.set(0, 0.038, 0.105);
+  g.add(rSight);
+
+  return g;
+}
+
+function buildFists() {
+  const g = new THREE.Group();
+  const skinMat = new THREE.MeshStandardMaterial({ color: 0xD4956A, roughness: 0.9, metalness: 0.0 });
+
+  const rf = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.055, 0.22), skinMat);
+  rf.name = 'rightFist'; rf.position.set( 0.14, 0, 0); g.add(rf);
+
+  const lf = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.055, 0.22), skinMat);
+  lf.name = 'leftFist';  lf.position.set(-0.14, 0, 0); g.add(lf);
+
+  return g;
+}
+
+function buildGrenade() {
+  const g = new THREE.Group();
+  const matBody  = new THREE.MeshStandardMaterial({ color: 0x3a6e3a, roughness: 0.7, metalness: 0.3 });
+  const matCap   = new THREE.MeshStandardMaterial({ color: 0x505050, roughness: 0.5, metalness: 0.6 });
+  const matLever = new THREE.MeshStandardMaterial({ color: 0x909090, roughness: 0.4, metalness: 0.8 });
+  const matPin   = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.3, metalness: 0.9 });
+
+  // Body sphere
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.048, 10, 8), matBody);
+  g.add(body);
+
+  // Horizontal seam band
+  const band = new THREE.Mesh(new THREE.TorusGeometry(0.048, 0.006, 6, 16), matBody);
+  band.rotation.x = Math.PI / 2;
+  g.add(band);
+
+  // Top cap
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.028, 8), matCap);
+  cap.position.y = 0.060;
+  g.add(cap);
+
+  // Lever (spoon) along side
+  const lever = new THREE.Mesh(new THREE.BoxGeometry(0.010, 0.060, 0.012), matLever);
+  lever.position.set(0.024, 0.052, 0);
+  lever.rotation.z = -0.3;
+  g.add(lever);
+
+  // Safety pin ring
+  const pin = new THREE.Mesh(new THREE.TorusGeometry(0.012, 0.003, 5, 10), matPin);
+  pin.position.set(-0.024, 0.072, 0);
+  pin.rotation.y = Math.PI / 2;
+  g.add(pin);
+
+  // Hand (wrist holding the grenade)
+  const skinMat = new THREE.MeshStandardMaterial({ color: 0xD4956A, roughness: 0.9, metalness: 0.0 });
+  const hand = new THREE.Mesh(new THREE.BoxGeometry(0.060, 0.055, 0.09), skinMat);
+  hand.position.set(0, -0.068, 0.02);
+  g.add(hand);
+  const wrist = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.060, 0.13), skinMat);
+  wrist.position.set(0, -0.064, 0.11);
+  g.add(wrist);
+
+  return g;
+}
+
+// ── First-person viewmodels ────────────────────────────────
+const vmRifle   = buildRifle();
+const vmHandgun = buildHandgun();
+const vmFists   = buildFists();
+const vmGrenade = buildGrenade();
+
+vmRifle.position.set(0.22, -0.22, -0.38);
+vmRifle.rotation.y = 0.07;
+vmHandgun.position.set(0.14, -0.24, -0.28);
+vmHandgun.rotation.y = 0.05;
+vmFists.position.set(0.0, -0.24, -0.28);
+vmGrenade.position.set(0.13, -0.22, -0.26);
+vmGrenade.rotation.y = 0.08;
+
+let viewmodel = vmRifle;
+camera.add(viewmodel);
+
+// Magazine mesh references for reload animation
+const rifleMag   = vmRifle.getObjectByName('magazine');
+const handgunMag = vmHandgun.getObjectByName('magazine');
+
+let recoilZ = 0;
+let recoilY = 0;
+
+// ── Reload animation state ────────────────────────────────
+const RELOAD_DURATION = 1.75;
+let isReloading  = false;
+let reloadTimer  = 0;
+
+// Reload HUD indicator
+const reloadIndicator = document.getElementById('reload-indicator');
+const reloadBarFill   = document.getElementById('reload-bar-fill');
+const reloadClock     = document.getElementById('reload-clock');
+const CLOCK_FRAMES = ['🕐','🕑','🕒','🕓','🕔','🕕','🕖','🕗','🕘','🕙','🕚','🕛'];
+
+function updateReloadHUD() {
+  if (!isReloading) {
+    reloadIndicator.classList.remove('visible');
+    return;
+  }
+  reloadIndicator.classList.add('visible');
+  // t goes 0 → 1 as timer counts down
+  const t = 1 - reloadTimer / RELOAD_DURATION;
+  // bar shrinks from full (scaleX=1) to empty (scaleX=0)
+  reloadBarFill.style.transform = `scaleX(${1 - t})`;
+  // cycle clock emoji
+  reloadClock.textContent = CLOCK_FRAMES[Math.floor(t * CLOCK_FRAMES.length) % CLOCK_FRAMES.length];
+}
+
+// ── ADS (Aim Down Sights) ─────────────────────────────────
+let isADS = false;
+const scopeOverlay = document.getElementById('scope-overlay');
+
+document.addEventListener('keydown', e => {
+  if (e.code === 'KeyE' && controls.isLocked && !isReloading && currentWeaponKey !== 'fists' && currentWeaponKey !== 'grenade') {
+    isADS = !isADS;
+    const isRifle = currentWeaponKey === 'rifle';
+    scopeOverlay.classList.toggle('active', isADS && isRifle);
+    document.body.classList.toggle('ads', isADS && isRifle);
+  }
+});
+
+// Per-weapon viewmodel positions
+const VM_POSITIONS = {
+  rifle:   { idle: { x: 0.22, y: -0.22, z: -0.38, ry: 0.07 }, ads: { x: 0.0,  y: -0.17, z: -0.30, ry: 0.0  } },
+  handgun: { idle: { x: 0.14, y: -0.24, z: -0.28, ry: 0.05 }, ads: { x: 0.13, y: -0.23, z: -0.24, ry: 0.04 } },
+  fists:   { idle: { x: 0.0,  y: -0.24, z: -0.28, ry: 0.0  }, ads: { x: 0.0,  y: -0.24, z: -0.28, ry: 0.0  } },
+  grenade: { idle: { x: 0.13, y: -0.22, z: -0.26, ry: 0.08 }, ads: { x: 0.13, y: -0.22, z: -0.26, ry: 0.08 } },
+};
+const FOV_IDLE = 80;
+const FOV_ADS  = 30;
+const FOV_ADS_HANDGUN = 58;
+
+function shootFlash() {
+  flashLight.intensity = 6;
+  clearTimeout(flashTimeout);
+  flashTimeout = setTimeout(() => { flashLight.intensity = 0; }, 60);
+}
+
+// Right-click to scope
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('mousedown', e => {
+  if (e.button === 2 && controls.isLocked && !isReloading && currentWeaponKey !== 'fists' && currentWeaponKey !== 'grenade') {
+    isADS = !isADS;
+    const isRifle = currentWeaponKey === 'rifle';
+    scopeOverlay.classList.toggle('active', isADS && isRifle);
+    document.body.classList.toggle('ads', isADS && isRifle);
+  }
+});
+
+// Auto-fire on hold
+let autoFireInterval = null;
+let isMouseDown = false;
+let mouseDownTime = 0;
+let handExplodeTriggered = false;
+document.addEventListener('mousedown', e => {
+  if (e.button === 0) {
+    isMouseDown = true;
+    mouseDownTime = performance.now() / 1000;
+    handExplodeTriggered = false;
+    if (currentWeaponKey !== 'grenade') {
+      shoot();
+      autoFireInterval = setInterval(shoot, getCurrentWeapon().fireRate);
+    }
+  }
+});
+document.addEventListener('mouseup', e => {
+  if (e.button === 0) {
+    isMouseDown = false;
+    if (currentWeaponKey === 'grenade') {
+      if (!handExplodeTriggered) shoot();
+    } else {
+      clearInterval(autoFireInterval);
+      autoFireInterval = null;
+    }
+  }
+});
+
+// Reload
+function reload() {
+  if (isReloading) return;
+  if (isADS) {
+    isADS = false;
+    scopeOverlay.classList.remove('active');
+    document.body.classList.remove('ads');
+  }
+  if (currentWeaponKey === 'fists' || currentWeaponKey === 'grenade') return;
+  if (ammo >= clipSize || maxAmmo <= 0) return;
+  isReloading = true;
+  reloadTimer = RELOAD_DURATION;
+}
+document.addEventListener('keydown', e => {
+  if (e.code === 'KeyR') reload();
+});
+
+// ── Enemy AABB collision ──────────────────────────────────
+const ENEMY_RADIUS = 0.35;
+const ENEMY_HEIGHT = 1.76; // top of head above mesh origin
+
+function resolveEnemyCollision(e) {
+  const pos = e.mesh.position;
+  for (const col of colliders) {
+    const pad   = ENEMY_RADIUS;
+    const footY = pos.y;
+    const headY = pos.y + ENEMY_HEIGHT;
+
+    if (
+      pos.x + pad > col.min.x && pos.x - pad < col.max.x &&
+      headY > col.min.y && footY < col.max.y &&
+      pos.z + pad > col.min.z && pos.z - pad < col.max.z
+    ) {
+      const ox    = Math.min(pos.x + pad - col.min.x, col.max.x - (pos.x - pad));
+      const oyBot = col.max.y - footY;
+      const oyTop = headY    - col.min.y;
+      const oy    = Math.min(oyBot, oyTop);
+      const oz    = Math.min(pos.z + pad - col.min.z, col.max.z - (pos.z - pad));
+
+      if (ox <= oy && ox <= oz) {
+        pos.x += (pos.x < (col.min.x + col.max.x) * 0.5) ? -ox : ox;
+      } else if (oz <= oy) {
+        pos.z += (pos.z < (col.min.z + col.max.z) * 0.5) ? -oz : oz;
+      } else if (oyBot <= oyTop) {
+        pos.y = col.max.y;
+        if (e.velY < 0) { e.velY = 0; e.onGround = true; }
+      } else {
+        if (e.velY > 0) e.velY = 0;
+        pos.y = col.min.y - ENEMY_HEIGHT;
+      }
+    }
+  }
+}
+
+// ── AABB collision helper ─────────────────────────────────
+function resolveCollision(pos) {
+  for (const col of colliders) {
+    const pad   = PLAYER_RADIUS;
+    const footY = pos.y - playerHeight;
+    const headY = pos.y + 0.15;
+
+    if (
+      pos.x + pad > col.min.x && pos.x - pad < col.max.x &&
+      headY > col.min.y && footY < col.max.y &&
+      pos.z + pad > col.min.z && pos.z - pad < col.max.z
+    ) {
+      const ox    = Math.min(pos.x + pad - col.min.x, col.max.x - (pos.x - pad));
+      const oyBot = col.max.y - footY;   // feet penetrating top of box
+      const oyTop = headY    - col.min.y; // head penetrating bottom of box
+      const oy    = Math.min(oyBot, oyTop);
+      const oz    = Math.min(pos.z + pad - col.min.z, col.max.z - (pos.z - pad));
+
+      if (ox <= oy && ox <= oz) {
+        // Push out along X (side wall)
+        pos.x += (pos.x < (col.min.x + col.max.x) * 0.5) ? -ox : ox;
+      } else if (oz <= oy) {
+        // Push out along Z (side wall)
+        pos.z += (pos.z < (col.min.z + col.max.z) * 0.5) ? -oz : oz;
+      } else if (oyBot <= oyTop) {
+        // Land on top surface
+        pos.y = col.max.y + playerHeight;
+        if (velY < 0) {
+          velY = 0;
+          onGround = true;
+          if (slideJumping) { slideVelX = 0; slideVelZ = 0; slideJumping = false; }
+          airJumpsLeft = currentWeaponKey === 'fists' ? 1 : 0;
+        }
+      } else {
+        // Hit ceiling from below
+        if (velY > 0) velY = 0;
+        pos.y = col.min.y - 0.15;
+      }
+    }
+  }
+}
+
+// ── Ramp surface collision ────────────────────────────────
+function checkRamps(pos) {
+  for (const r of rampColliders) {
+    const dx = pos.x - r.cx;
+    const dz = pos.z - r.cz;
+    if (Math.abs(dx) > r.halfW || Math.abs(dz) > r.halfL) continue;
+
+    // Surface height at this world-z relative to ramp centre
+    const surfaceY = RAMP_SURFACE_OFFSET + r.sign * dz * RAMP_SLOPE;
+    const footY    = pos.y - playerHeight;
+
+    // Player is on or just above the ramp surface (allow 0.5 units above before ignoring)
+    if (footY <= surfaceY + 0.05 && footY >= surfaceY - 0.6) {
+      pos.y = surfaceY + playerHeight;
+      if (velY <= 0) {
+        velY = 0;
+        onGround = true;
+        if (slideJumping) { slideVelX = 0; slideVelZ = 0; slideJumping = false; }
+        airJumpsLeft = currentWeaponKey === 'fists' ? 1 : 0;
+      }
+    }
+  }
+}
+
+// ── Enemy AI ──────────────────────────────────────────────
+const clock = new THREE.Clock();
+
+function updateEnemies(dt) {
+  const ENEMY_SPEED    = 4.5;
+  const STRAFE_SPEED   = 3.2;
+  const ATTACK_DIST    = 2.5;
+  const SHOOT_RANGE    = 40;
+  const E_SLIDE_SPEED  = 17;
+  const E_SLIDE_DECEL  = 9;
+  const E_SLIDE_DUR    = 0.65;
+
+  enemies.forEach((e) => {
+    if (!e.alive) return;
+
+    const dx   = camera.position.x - e.mesh.position.x;
+    const dz   = camera.position.z - e.mesh.position.z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+    const nx   = dx / dist;
+    const nz   = dz / dist;
+    // Perpendicular (left/right strafe axis)
+    const rx   =  nz;
+    const rz   = -nx;
+
+    // Always face player
+    e.mesh.rotation.y = Math.atan2(dx, dz);
+
+    // ── Strafe timer: pick a new lateral direction every 1.2–3.2 s ──
+    e.strafeTimer -= dt;
+    if (e.strafeTimer <= 0) {
+      const r = Math.random();
+      e.strafeDir = r < 0.35 ? 0 : (r < 0.67 ? 1 : -1);
+      e.strafeTimer = 1.2 + Math.random() * 2.0;
+    }
+
+    // ── Jump timer: jump every 2.5–6 s if on ground ──────────────────
+    e.jumpTimer -= dt;
+    if (e.jumpTimer <= 0) {
+      if (e.onGround) e.velY = JUMP_VEL * 0.88;
+      e.jumpTimer = 2.5 + Math.random() * 3.5;
+    }
+
+    // ── Slide timer: occasionally burst-slide ─────────────────────────
+    e.slideCooldown = Math.max(0, e.slideCooldown - dt);
+    e.slideTimer   -= dt;
+    if (e.slideTimer <= 0 && e.onGround && !e.isSliding && e.slideCooldown <= 0) {
+      if (Math.random() < 0.45) {
+        e.isSliding = true;
+        if (Math.random() < 0.55) {
+          // Slide toward player
+          e.slideVelX = nx * E_SLIDE_SPEED;
+          e.slideVelZ = nz * E_SLIDE_SPEED;
+        } else {
+          // Slide sideways
+          const s = Math.random() < 0.5 ? 1 : -1;
+          e.slideVelX = rx * s * E_SLIDE_SPEED;
+          e.slideVelZ = rz * s * E_SLIDE_SPEED;
+        }
+        e.slideDurTimer = E_SLIDE_DUR;
+      }
+      e.slideTimer = 3.0 + Math.random() * 4.0;
+    }
+
+    // ── Movement ─────────────────────────────────────────────────────
+    if (e.isSliding) {
+      const spd = Math.sqrt(e.slideVelX ** 2 + e.slideVelZ ** 2);
+      if (spd > 0) {
+        const ratio = Math.max(0, spd - E_SLIDE_DECEL * dt) / spd;
+        e.slideVelX *= ratio;
+        e.slideVelZ *= ratio;
+      }
+      e.mesh.position.x += e.slideVelX * dt;
+      e.mesh.position.z += e.slideVelZ * dt;
+      e.slideDurTimer -= dt;
+      if (e.slideDurTimer <= 0 || spd < 0.5) {
+        e.isSliding = false; e.slideVelX = 0; e.slideVelZ = 0;
+        e.slideCooldown = 1.0;
+      }
+    } else if (dist > ATTACK_DIST) {
+      // Advance + strafe
+      e.mesh.position.x += (nx + e.strafeDir * rx * 0.65) * ENEMY_SPEED * dt;
+      e.mesh.position.z += (nz + e.strafeDir * rz * 0.65) * ENEMY_SPEED * dt;
+    }
+
+    // ── Slide pose animation ──────────────────────────────────────────
+    // Lerp slideAnimT toward 1 (sliding) or 0 (standing).
+    // Fast snap into the slide, slower stand-up for a natural feel.
+    {
+      const slideTarget = e.isSliding ? 1 : 0;
+      const rate = e.isSliding ? 14 : 6;
+      e.slideAnimT = THREE.MathUtils.lerp(e.slideAnimT, slideTarget,
+                       1 - Math.exp(-rate * dt));
+
+      const t = e.slideAnimT;
+      const eBody = e.mesh.getObjectByName('body');
+      if (eBody) {
+        // Drop body low (crouch to the ground)
+        eBody.position.y = -0.58 * t;
+        // Lean forward into the slide direction
+        eBody.rotation.x = -0.30 * t;
+        // Tilt slightly sideways (adds a skidding feel)
+        eBody.rotation.z =  0.12 * t * Math.sign(e.strafeDir || 1);
+      }
+    }
+
+    // ── Gravity + floor ───────────────────────────────────────────────
+    e.velY += GRAVITY * dt;
+    e.mesh.position.y += e.velY * dt;
+    if (e.mesh.position.y <= 0) {
+      e.mesh.position.y = 0;
+      e.velY = 0;
+      e.onGround = true;
+    } else {
+      e.onGround = false;
+    }
+    resolveEnemyCollision(e);
+
+    // ── Ranged shooting ───────────────────────────────────────────────
+    e.shootTimer -= dt;
+    if (e.shootTimer <= 0 && dist < SHOOT_RANGE) {
+      const enemyEye = e.mesh.position.clone();
+      enemyEye.y += 1.4;
+      if (hasLineOfSight(enemyEye, camera.position)) {
+        spawnEnemyBullet(e, dist);
+        e.shootTimer = 0.75 + Math.random() * 1.1;
+      } else {
+        e.shootTimer = 0.25; // blocked — check again soon
+      }
+    }
+
+    // ── Melee when right on top of player ─────────────────────────────
+    if (dist < ATTACK_DIST && Math.random() < 0.002) {
+      hp -= 8;
+      flashDamage();
+      if (hp <= 0) {
+        hp = 0;
+        deaths++;
+        addKillFeed('<span class="kf-enemy">Enemy</span> eliminated <span class="kf-you">You</span>', false);
+        setTimeout(() => {
+          hp = 150;
+          ammo = weaponState[currentWeaponKey].ammo = getCurrentWeapon().clipSize;
+          maxAmmo = weaponState[currentWeaponKey].maxAmmo = getCurrentWeapon().reserve;
+          clipSize = getCurrentWeapon().clipSize;
+          camera.position.set(0, PLAYER_HEIGHT, 45);
+          velY = 0; isSliding = false; slideVelX = 0; slideVelZ = 0;
+          isReloading = false; reloadTimer = 0; updateReloadHUD();
+          isADS = false;
+          scopeOverlay.classList.remove('active');
+          document.body.classList.remove('ads');
+          updateHUD();
+        }, 1500);
+      }
+      updateHUD();
+    }
+  });
+}
+
+// ── Game loop ─────────────────────────────────────────────
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+
+  if (controls.isLocked) {
+    // Slide cooldown tick
+    slideCooldown = Math.max(0, slideCooldown - dt);
+
+    // Movement
+    if (isSliding) {
+      // On-ground slide: decelerate and move
+      const spd = Math.sqrt(slideVelX*slideVelX + slideVelZ*slideVelZ);
+      if (spd > 0) {
+        const decel = Math.min(SLIDE_DECEL * dt, spd);
+        const ratio = (spd - decel) / spd;
+        slideVelX *= ratio;
+        slideVelZ *= ratio;
+      }
+      camera.position.x += slideVelX * dt;
+      camera.position.z += slideVelZ * dt;
+      slideTimer -= dt;
+      if (slideTimer <= 0 || spd < 0.5) {
+        isSliding = false;
+        slideVelX = 0; slideVelZ = 0;
+        slideCooldown = SLIDE_COOLDOWN;
+      }
+    } else if (!onGround && (Math.abs(slideVelX) > 0.05 || Math.abs(slideVelZ) > 0.05)) {
+      // Airborne slide-jump: WASD accelerates the slide velocity directly so pressing
+      // against momentum actually redirects you rather than fighting a separate force.
+      const sprint = keys['ShiftLeft'] || keys['ShiftRight'];
+      const targetSpeed = sprint ? SPRINT_SPEED : SPEED;
+
+      // Light air drag
+      const spd = Math.sqrt(slideVelX*slideVelX + slideVelZ*slideVelZ);
+      if (spd > 0) {
+        const decel = Math.min(SLIDE_AIR_DECEL * dt, spd);
+        const ratio = (spd - decel) / spd;
+        slideVelX *= ratio;
+        slideVelZ *= ratio;
+      }
+
+      // WASD feeds acceleration into the slide velocity (world-space)
+      const fwd = new THREE.Vector3();
+      camera.getWorldDirection(fwd); fwd.y = 0; fwd.normalize();
+      const right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0, 1, 0)).normalize();
+      let ax = 0, az = 0;
+      if (keys['KeyW']) { ax += fwd.x; az += fwd.z; }
+      if (keys['KeyS']) { ax -= fwd.x; az -= fwd.z; }
+      if (keys['KeyA']) { ax -= right.x; az -= right.z; }
+      if (keys['KeyD']) { ax += right.x; az += right.z; }
+      const alen = Math.sqrt(ax * ax + az * az);
+      if (alen > 0) {
+        const accel = targetSpeed * 4 * dt;  // quick enough to feel responsive
+        slideVelX += (ax / alen) * accel;
+        slideVelZ += (az / alen) * accel;
+        // Soft cap so WASD can't push you beyond 1.8× sprint speed
+        const newSpd = Math.sqrt(slideVelX*slideVelX + slideVelZ*slideVelZ);
+        if (newSpd > targetSpeed * 1.8) {
+          const capR = (targetSpeed * 1.8) / newSpd;
+          slideVelX *= capR;
+          slideVelZ *= capR;
+        }
+      }
+
+      camera.position.x += slideVelX * dt;
+      camera.position.z += slideVelZ * dt;
+    } else {
+      const sprint = keys['ShiftLeft'] || keys['ShiftRight'];
+      const speed  = (sprint ? SPRINT_SPEED : SPEED) * dt;
+      const dir = new THREE.Vector3();
+      if (keys['KeyW']) dir.z -= 1;
+      if (keys['KeyS']) dir.z += 1;
+      if (keys['KeyA']) dir.x -= 1;
+      if (keys['KeyD']) dir.x += 1;
+      dir.normalize().multiplyScalar(speed);
+      controls.moveRight(dir.x);
+      controls.moveForward(-dir.z);
+    }
+
+    // Camera height lerp (crouch during slide)
+    const oldH = playerHeight;
+    const targetH = isSliding ? SLIDE_HEIGHT : PLAYER_HEIGHT;
+    playerHeight = THREE.MathUtils.lerp(playerHeight, targetH, 1 - Math.exp(-18 * dt));
+    // When crouching (height decreasing) while grounded, move camera down with it
+    // so the floor check still fires every frame and onGround stays accurate
+    if (playerHeight < oldH && (onGround || isSliding)) {
+      camera.position.y += (playerHeight - oldH);
+    }
+
+    // Gravity + jump
+    velY += GRAVITY * dt;
+    camera.position.y += velY * dt;
+
+    // Reset onGround — will be set true below by floor or block collision
+    onGround = false;
+
+    // Floor collision
+    if (camera.position.y <= playerHeight) {
+      camera.position.y = playerHeight;
+      if (slideJumping) { slideVelX = 0; slideVelZ = 0; slideJumping = false; }
+      onGround = true;
+      velY = 0;
+      airJumpsLeft = currentWeaponKey === 'fists' ? 1 : 0;
+    }
+
+    // Boundary clamp
+    camera.position.x = THREE.MathUtils.clamp(camera.position.x, -88, 88);
+    camera.position.z = THREE.MathUtils.clamp(camera.position.z, -88, 88);
+
+    // Block/wall collision — runs BEFORE jump check so onGround is correct when on a box
+    resolveCollision(camera.position);
+
+    // Ramp surface collision — snaps player onto angled surfaces
+    checkRamps(camera.position);
+
+    // Jump — onGround is now accurate for both floor, block, and ramp surfaces.
+    // Also allow jumping while sliding (slide can only start on ground, so it's always valid).
+    if (jumpQueued) {
+      if (onGround || isSliding) {
+        velY = isSliding ? 15 : JUMP_VEL;
+        onGround = false;
+        if (isSliding) { slideJumping = true; slideVelX *= 0.35; slideVelZ *= 0.35; }
+        isSliding = false;
+        // Lift camera by the height gained when standing up on jump,
+        // so the floor check doesn't immediately recapture the player and cancel the jump
+        camera.position.y += PLAYER_HEIGHT - playerHeight;
+        playerHeight = PLAYER_HEIGHT;
+      } else if (currentWeaponKey === 'fists' && airJumpsLeft > 0) {
+        velY = JUMP_VEL;
+        airJumpsLeft--;
+      }
+      jumpQueued = false;
+    }
+
+    // Grenade recharge timer
+    if (grenadeRechargeTimer > 0) {
+      grenadeRechargeTimer -= dt;
+      if (grenadeRechargeTimer <= 0) {
+        grenadeRechargeTimer = 0;
+        weaponState.grenade.ammo = 1;
+        if (currentWeaponKey === 'grenade') { ammo = 1; vmGrenade.visible = true; }
+      } else {
+        if (currentWeaponKey === 'grenade') { vmGrenade.visible = false; }
+      }
+      updateHUD(); // always update so the cooldown bar animates regardless of active weapon
+    }
+
+    // Bullets
+    updateBullets(dt);
+    updateEnemyBullets(dt);
+    updateGrenades(dt);
+    updateTrajectory();
+
+    // Enemies
+    updateEnemies(dt);
+
+    // Punch animation
+    if (currentWeaponKey === 'fists') {
+      const rf = vmFists.getObjectByName('rightFist');
+      const lf = vmFists.getObjectByName('leftFist');
+      if (punchProgress > 0) {
+        punchProgress += dt / 0.22;
+        if (punchProgress >= 1) { punchProgress = 0; }
+        const ext = Math.sin(punchProgress * Math.PI);
+        if (punchHand === 'right') {
+          // Right hook: swings inward from right side
+          rf.position.set(0.14 - ext * 0.22, ext * 0.025, -ext * 0.06);
+          rf.rotation.z = -ext * 0.55;
+          rf.rotation.y =  ext * 0.25;
+          lf.position.set(-0.14, 0, 0);
+          lf.rotation.z = 0; lf.rotation.y = 0;
+        } else {
+          // Left hook: swings inward from left side
+          lf.position.set(-0.14 + ext * 0.22, ext * 0.025, -ext * 0.06);
+          lf.rotation.z =  ext * 0.55;
+          lf.rotation.y = -ext * 0.25;
+          rf.position.set(0.14, 0, 0);
+          rf.rotation.z = 0; rf.rotation.y = 0;
+        }
+        if (!punchDmgApplied && punchProgress >= 0.38) {
+          punchDmgApplied = true;
+          applyMeleeDamage();
+        }
+      } else {
+        // Idle — reset both fists
+        rf.position.set( 0.14, 0, 0); rf.rotation.z = 0; rf.rotation.y = 0;
+        lf.position.set(-0.14, 0, 0); lf.rotation.z = 0; lf.rotation.y = 0;
+      }
+    }
+
+    // Reload timer tick
+    let reloadOffX = 0, reloadOffY = 0, reloadOffZ = 0, reloadRotX = 0, reloadRotZ = 0;
+    if (isReloading) {
+      reloadTimer -= dt;
+      if (reloadTimer <= 0) {
+        // Animation done — refill ammo, reset magazine mesh
+        reloadTimer = 0;
+        isReloading = false;
+        updateReloadHUD();
+        if (rifleMag)   rifleMag.position.y   = rifleMag.userData.restY;
+        if (handgunMag) handgunMag.position.y = handgunMag.userData.restY;
+        const needed = clipSize - ammo;
+        const take   = Math.min(needed, maxAmmo);
+        ammo    += take;
+        maxAmmo -= take;
+        updateHUD();
+      } else {
+        // t: 0 → 1 over the duration
+        const t = 1 - reloadTimer / RELOAD_DURATION;
+
+        updateReloadHUD();
+
+        // ── Whole-weapon animation ──────────────────────────
+        // Keep the gun on screen: only a subtle dip + tilt so the mag stays visible
+        const dropCurve = Math.sin(t * Math.PI);
+        const rackCurve = Math.sin(Math.max(0, (t - 0.62) / 0.18) * Math.PI);
+        reloadOffY = -0.05 * dropCurve;   // tiny dip — gun stays on screen
+        reloadOffZ =  0.03 * dropCurve;   // slight forward nudge
+        reloadOffX =  0.02 * dropCurve;
+        reloadRotZ =  0.18 * dropCurve;   // gentle tilt so mag well is exposed
+        reloadRotX = -0.30 * rackCurve;
+
+        // ── Magazine slide animation ────────────────────────
+        // Smooth-step helper: maps a sub-range of t to [0,1]
+        const ss = (a, b, x) => {
+          const p = Math.max(0, Math.min(1, (x - a) / (b - a)));
+          return p * p * (3 - 2 * p);
+        };
+        // Eject: t 0.12 → 0.40  (mag drops out)
+        const ejectP  = ss(0.12, 0.40, t);
+        // Insert: t 0.54 → 0.82  (new mag slides back in)
+        const insertP = ss(0.54, 0.82, t);
+        // Larger travel so the mag visibly leaves and re-enters the gun
+        const dropAmt = currentWeaponKey === 'rifle' ? 0.20 : 0.14;
+        const magLocalY = -dropAmt * ejectP + dropAmt * insertP;
+
+        const activeMag = currentWeaponKey === 'rifle'   ? rifleMag
+                        : currentWeaponKey === 'handgun' ? handgunMag : null;
+        if (activeMag) activeMag.position.y = activeMag.userData.restY + magLocalY;
+      }
+    }
+
+    // Viewmodel recoil decay + ADS lerp
+    recoilZ *= 0.72;
+    recoilY *= 0.72;
+    const vmTarget = isADS ? VM_POSITIONS[currentWeaponKey].ads : VM_POSITIONS[currentWeaponKey].idle;
+    const lerpSpeed = 0.18;
+    viewmodel.position.x  = THREE.MathUtils.lerp(viewmodel.position.x,  vmTarget.x  + reloadOffX, lerpSpeed);
+    viewmodel.position.y  = THREE.MathUtils.lerp(viewmodel.position.y,  vmTarget.y  - recoilY + reloadOffY, lerpSpeed);
+    viewmodel.position.z  = THREE.MathUtils.lerp(viewmodel.position.z,  vmTarget.z  + recoilZ  + reloadOffZ, lerpSpeed);
+    viewmodel.rotation.y  = THREE.MathUtils.lerp(viewmodel.rotation.y,  vmTarget.ry, lerpSpeed);
+    viewmodel.rotation.x  = THREE.MathUtils.lerp(viewmodel.rotation.x,  reloadRotX,  lerpSpeed);
+    viewmodel.rotation.z  = THREE.MathUtils.lerp(viewmodel.rotation.z,  reloadRotZ,  lerpSpeed);
+
+    // FOV lerp
+    const fovTarget = isADS ? (currentWeaponKey === 'rifle' ? FOV_ADS : FOV_ADS_HANDGUN) : FOV_IDLE;
+    camera.fov = THREE.MathUtils.lerp(camera.fov, fovTarget, lerpSpeed);
+    camera.updateProjectionMatrix();
+  }
+
+  renderer.render(scene, camera);
+}
+animate();
+
+// ── Resize ────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+<script src="https://replit-cdn.com/replit-pill/replit-pill.global.js" data-repl-id="566acfcb-6311-497b-b8eb-4dfeabaad724"></script></body>
+</html>

@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Answer Bots — Kahootinator 3.0</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --primary: #a855f7;
+            --secondary: #22d3ee;
+            --gradient: linear-gradient(135deg, #a855f7, #22d3ee);
+            --bg: #07090f;
+            --card-bg: rgba(255,255,255,0.04);
+            --border: rgba(168,85,247,0.2);
+            --border-subtle: rgba(255,255,255,0.07);
+            --text: #e8e8f4;
+            --muted: #64748b;
+            --success: #4ade80;
+            --error: #f87171;
+            --warn: #fbbf24;
+            --answer: #c084fc;
+        }
+
+        body {
+            background: var(--bg);
+            background-image:
+                radial-gradient(ellipse at 15% 40%, rgba(168,85,247,0.15) 0%, transparent 55%),
+                radial-gradient(ellipse at 85% 15%, rgba(34,211,238,0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 85%, rgba(168,85,247,0.07) 0%, transparent 50%);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 28px 16px 60px;
+        }
+
+        .bg-orb {
+            position: fixed; border-radius: 50%; pointer-events: none; z-index: 0;
+        }
+        .bg-orb-1 {
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, rgba(168,85,247,0.08) 0%, transparent 70%);
+            top: -150px; left: -150px;
+            animation: orbFloat 12s ease-in-out infinite;
+        }
+        .bg-orb-2 {
+            width: 400px; height: 400px;
+            background: radial-gradient(circle, rgba(34,211,238,0.05) 0%, transparent 70%);
+            bottom: -100px; right: -100px;
+            animation: orbFloat 15s ease-in-out infinite reverse;
+        }
+        @keyframes orbFloat {
+            0%, 100% { transform: translate(0,0); }
+            33% { transform: translate(30px,-20px); }
+            66% { transform: translate(-20px,15px); }
+        }
+
+        nav {
+            position: relative; z-index: 10;
+            display: flex;
+            gap: 4px;
+            margin-bottom: 32px;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid var(--border-subtle);
+            border-radius: 50px;
+            padding: 5px;
+            backdrop-filter: blur(16px);
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        nav a {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 0.82rem;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            padding: 7px 16px;
+            border-radius: 40px;
+            transition: all 0.2s;
+        }
+
+        nav a:hover { color: #fff; background: rgba(255,255,255,0.06); }
+        nav a.active {
+            background: var(--gradient);
+            color: #fff;
+            box-shadow: 0 0 20px rgba(168,85,247,0.5);
+        }
+        nav a.logout {
+            color: #2d3748;
+            font-size: 0.78rem;
+            font-weight: 400;
+        }
+        nav a.logout:hover { color: var(--muted); background: transparent; }
+
+        .hero {
+            position: relative; z-index: 1;
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .hero-badge {
+            display: inline-block;
+            background: rgba(168,85,247,0.12);
+            border: 1px solid rgba(168,85,247,0.3);
+            color: var(--primary);
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            padding: 4px 14px;
+            border-radius: 20px;
+            margin-bottom: 12px;
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.9rem;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: 0 0 30px rgba(168,85,247,0.5);
+            margin-bottom: 6px;
+            letter-spacing: 1px;
+        }
+
+        .subtitle {
+            color: var(--muted);
+            font-size: 0.88rem;
+        }
+
+        .card {
+            position: relative; z-index: 1;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-top: 1px solid rgba(168,85,247,0.4);
+            border-radius: 18px;
+            padding: 28px;
+            width: 100%;
+            max-width: 480px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(168,85,247,0.08);
+            margin-bottom: 16px;
+            backdrop-filter: blur(16px);
+        }
+
+        .card-title {
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 20px;
+        }
+
+        .info-box {
+            background: rgba(168,85,247,0.07);
+            border: 1px solid rgba(168,85,247,0.2);
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-size: 0.82rem;
+            color: #94a3b8;
+            line-height: 1.6;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            margin-bottom: 4px;
+        }
+
+        .info-box-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+
+        .field-label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--muted);
+            margin-bottom: 6px;
+            margin-top: 18px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .field-label:first-of-type { margin-top: 0; }
+
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 12px 14px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 0.95rem;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            transition: border 0.2s, box-shadow 0.2s;
+        }
+
+        input[type="text"]:focus, input[type="number"]:focus {
+            border-color: rgba(168,85,247,0.5);
+            box-shadow: 0 0 0 3px rgba(168,85,247,0.1);
+        }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 10px;
+            padding: 12px 14px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            border: 1px solid var(--border-subtle);
+        }
+
+        .toggle-text-label {
+            font-size: 0.88rem;
+            font-weight: 500;
+            color: #cbd5e1;
+        }
+
+        .toggle-desc {
+            font-size: 0.74rem;
+            color: #374151;
+            margin-top: 2px;
+        }
+
+        .toggle {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            flex-shrink: 0;
+            margin-left: 12px;
+        }
+
+        .toggle input { display: none; }
+
+        .toggle-slider {
+            position: absolute;
+            inset: 0;
+            background: #111827;
+            border-radius: 24px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background: #374151;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        .toggle input:checked + .toggle-slider { background: rgba(168,85,247,0.25); border-color: var(--primary); }
+        .toggle input:checked + .toggle-slider::before { transform: translateX(20px); background: var(--primary); }
+
+        .divider {
+            border: none;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            margin: 20px 0;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 22px;
+        }
+
+        .btn-launch {
+            flex: 1;
+            padding: 13px;
+            background: var(--gradient);
+            color: #fff;
+            font-size: 0.95rem;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            letter-spacing: 0.5px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.25s;
+            box-shadow: 0 4px 24px rgba(168,85,247,0.4);
+        }
+
+        .btn-launch:hover {
+            box-shadow: 0 6px 32px rgba(168,85,247,0.6);
+            transform: translateY(-1px);
+            filter: brightness(1.1);
+        }
+
+        .btn-launch:active { transform: scale(0.98) translateY(0); }
+        .btn-launch:disabled { background: #1e2030; box-shadow: none; color: #374151; cursor: not-allowed; transform: none; filter: none; }
+
+        .btn-stop {
+            padding: 13px 20px;
+            background: rgba(248,113,113,0.1);
+            border: 1px solid rgba(248,113,113,0.3);
+            color: var(--error);
+            font-size: 0.88rem;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: none;
+        }
+
+        .btn-stop:hover { background: rgba(248,113,113,0.18); border-color: var(--error); }
+
+        .stats-row {
+            display: none;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .stat-box {
+            flex: 1;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .stat-num {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .stat-num.joined { color: var(--success); }
+        .stat-num.failed { color: var(--error); }
+
+        .stat-label {
+            font-size: 0.68rem;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: #374151;
+            margin-top: 2px;
+        }
+
+        .log-wrap {
+            position: relative; z-index: 1;
+            width: 100%;
+            max-width: 480px;
+            display: none;
+            margin-bottom: 16px;
+        }
+
+        .log-header-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding: 0 2px;
+        }
+
+        .log-header-title {
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #374151;
+        }
+
+        .log-clear-btn {
+            font-size: 0.72rem;
+            color: #374151;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: color 0.2s;
+            font-family: 'Inter', sans-serif;
+            width: auto;
+            margin-top: 0;
+            box-shadow: none;
+        }
+        .log-clear-btn:hover { color: var(--muted); background: none; transform: none; box-shadow: none; }
+
+        #log {
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 14px;
+            padding: 16px;
+            height: 280px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            line-height: 1.75;
+            backdrop-filter: blur(6px);
+        }
+
+        #log::-webkit-scrollbar { width: 4px; }
+        #log::-webkit-scrollbar-track { background: transparent; }
+        #log::-webkit-scrollbar-thumb { background: #1e2030; border-radius: 4px; }
+
+        .log-join   { color: var(--success); }
+        .log-fail   { color: var(--error); }
+        .log-info   { color: var(--secondary); }
+        .log-end    { color: var(--warn); }
+        .log-answer { color: var(--answer); }
+        .log-error  { color: var(--error); }
+
+        .disclaimer {
+            position: relative; z-index: 1;
+            color: #1e2030;
+            font-size: 0.72rem;
+            text-align: center;
+            max-width: 480px;
+            margin-top: 12px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+
+    <nav>
+        <a href="/dashboard.html" class="logout" style="font-size:0.8rem;">← GameCenter</a>
+        <a href="/" class="active">🤖 Answer Bots</a>
+        <a href="/spam.html">📣 Name Spammer</a>
+        <a href="/dominate.html">🏆 Leaderboard</a>
+        <a href="/logout" class="logout">Logout</a>
+    </nav>
+
+    <div class="hero">
+        <div class="hero-badge">Bot Tool</div>
+        <h1>Answer Bots</h1>
+        <p class="subtitle">Flood the game — bots join and answer every question randomly</p>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Configuration</div>
+
+        <div class="info-box">
+            <span class="info-box-icon">🤖</span>
+            <span>Bots flood the lobby and automatically answer each question with a random choice, including word clouds and open-ended questions.</span>
+        </div>
+
+        <label class="field-label" style="margin-top:20px;">Game PIN</label>
+        <input type="number" id="pin" placeholder="Enter 6-digit game PIN" />
+
+        <label class="field-label">Number of Bots</label>
+        <input type="number" id="botCount" placeholder="e.g. 20  (max 400)" min="1" max="400" />
+
+        <hr class="divider">
+
+        <div class="toggle-row">
+            <div>
+                <div class="toggle-text-label">Random names</div>
+                <div class="toggle-desc">Use random human-sounding names</div>
+            </div>
+            <label class="toggle">
+                <input type="checkbox" id="useRandom" checked onchange="toggleNameField()" />
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+
+        <div id="botNameRow" style="display:none; margin-top:10px;">
+            <label class="field-label">Bot name prefix</label>
+            <input type="text" id="botName" placeholder="e.g. Bot → Bot1, Bot2..." />
+        </div>
+
+        <div class="toggle-row" style="margin-top:10px;">
+            <div>
+                <div class="toggle-text-label">Unicode bypass</div>
+                <div class="toggle-desc">Disguises names to avoid filters</div>
+            </div>
+            <label class="toggle">
+                <input type="checkbox" id="useBypass" />
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+
+        <div class="stats-row" id="statsRow">
+            <div class="stat-box">
+                <div class="stat-num joined" id="statJoined">0</div>
+                <div class="stat-label">Joined</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-num failed" id="statFailed">0</div>
+                <div class="stat-label">Failed</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-num" id="statTotal">0</div>
+                <div class="stat-label">Total</div>
+            </div>
+        </div>
+
+        <div class="btn-row">
+            <button class="btn-launch" id="startBtn" onclick="startFlood()">⚡ Launch Answer Bots</button>
+            <button class="btn-stop" id="stopBtn" onclick="stopFlood()">■ Stop</button>
+        </div>
+    </div>
+
+    <div class="log-wrap" id="logWrap">
+        <div class="log-header-bar">
+            <span class="log-header-title">Live Activity</span>
+            <button class="log-clear-btn" onclick="clearLog()">Clear</button>
+        </div>
+        <div id="log"></div>
+    </div>
+
+    <p class="disclaimer">For educational use only. Use responsibly.</p>
+
+    <script>
+        fetch('/session').then(r => r.json()).then(({ tier }) => {
+            if (!tier) { window.location.href = '/login.html'; return; }
+        });
+
+        function toggleNameField() {
+            const random = document.getElementById('useRandom').checked;
+            document.getElementById('botNameRow').style.display = random ? 'none' : 'block';
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        function log(type, msg) {
+            const logWrap = document.getElementById('logWrap');
+            const box = document.getElementById('log');
+            logWrap.style.display = 'block';
+            const line = document.createElement('div');
+            line.className = `log-${type}`;
+            const time = new Date().toLocaleTimeString();
+            line.textContent = `[${time}] ${msg}`;
+            box.appendChild(line);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function updateStats(joined, failed, total) {
+            const row = document.getElementById('statsRow');
+            row.style.display = 'flex';
+            document.getElementById('statJoined').textContent = joined !== undefined ? joined : document.getElementById('statJoined').textContent;
+            document.getElementById('statFailed').textContent = failed !== undefined ? failed : document.getElementById('statFailed').textContent;
+            document.getElementById('statTotal').textContent = total !== undefined ? total : document.getElementById('statTotal').textContent;
+        }
+
+        let evtSource = null;
+
+        function stopFlood() {
+            fetch('/stop', { method: 'POST' }).catch(() => {});
+            document.getElementById('stopBtn').style.display = 'none';
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('startBtn').textContent = '⚡ Launch Answer Bots';
+            if (evtSource) { evtSource.close(); evtSource = null; }
+        }
+
+        function startFlood() {
+            const pin       = document.getElementById('pin').value.trim();
+            const botCount  = parseInt(document.getElementById('botCount').value, 10);
+            const useRandom = document.getElementById('useRandom').checked;
+            const botName   = document.getElementById('botName').value.trim();
+            const useBypass = document.getElementById('useBypass').checked;
+
+            if (!pin) return alert('Please enter a game PIN.');
+            if (!botCount || botCount < 1) return alert('Please enter a valid bot count.');
+
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn  = document.getElementById('stopBtn');
+
+            startBtn.disabled = true;
+            startBtn.textContent = 'Launching...';
+            stopBtn.style.display = 'block';
+
+            document.getElementById('statJoined').textContent = '0';
+            document.getElementById('statFailed').textContent = '0';
+            document.getElementById('statTotal').textContent = botCount;
+            document.getElementById('statsRow').style.display = 'flex';
+
+            document.getElementById('log').innerHTML = '';
+
+            if (evtSource) { evtSource.close(); }
+            evtSource = new EventSource('/events');
+            evtSource.onmessage = e => {
+                const data = JSON.parse(e.data);
+                log(data.type, data.message);
+                if (data.joined !== undefined) document.getElementById('statJoined').textContent = data.joined;
+                if (data.failed !== undefined) document.getElementById('statFailed').textContent = data.failed;
+            };
+
+            fetch('/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pin, botCount, useRandom, botName, useBypass })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) {
+                    log('error', 'Error: ' + data.error);
+                    startBtn.disabled = false;
+                    startBtn.textContent = '⚡ Launch Answer Bots';
+                    stopBtn.style.display = 'none';
+                } else {
+                    setTimeout(() => {
+                        startBtn.disabled = false;
+                        startBtn.textContent = '🔁 Launch Again';
+                    }, 3000);
+                }
+            })
+            .catch(() => {
+                log('error', 'Failed to connect to server.');
+                startBtn.disabled = false;
+                startBtn.textContent = '⚡ Launch Answer Bots';
+                stopBtn.style.display = 'none';
+            });
+        }
+    </script>
+<script src="https://replit-cdn.com/replit-pill/replit-pill.global.js" data-repl-id="566acfcb-6311-497b-b8eb-4dfeabaad724"></script></body>
+</html>
